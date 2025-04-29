@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <cstring>
+#include <string>
 #include <cstdlib>
 #include <unistd.h>
 #include <fcntl.h>
@@ -8,6 +9,7 @@
 #include <netdb.h>
 #include <poll.h>
 #include <errno.h>
+#include "../includes/Request.hpp"
 
 #define BUF_SIZE 1024
 #define MAX_CLIENTS 10
@@ -139,11 +141,15 @@ void Server::start() {
 
 void Server::handle_client(int i) {
     char buf[BUF_SIZE];
+    std::string request;
     ssize_t nread = recv(fds[i].fd, buf, BUF_SIZE - 1, 0);
 
     if (nread > 0) {
-        buf[nread] = '\0';
-        std::cout << "Received request from client " << i << ":\n" << buf << std::endl;
+        request.append(buf, nread);
+        std::cout << "Received request from client " << i << ":\n" << request << std::endl;
+        
+        // TO-DO Parse the request
+
 
         const char* response =
             "HTTP/1.1 200 OK\r\n"
