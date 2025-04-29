@@ -44,11 +44,12 @@ void Server::handleNewConnection() {
 
 void Server::handleClientData(int client_fd) {
 	char buffer[1024] = {0};
-	ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
+	ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
 	if (bytes_read <= 0) {
 		closeClient(client_fd);
 		return ;
 	}
+	std::cout << "Received request from client :\n" << buffer << std::endl;
 
 	Request req = Request::parse(buffer);
 	std::string path = root + (req.path == "/" ? "/index.html" : req.path);
