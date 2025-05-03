@@ -15,17 +15,16 @@
 #define MAX_CLIENTS 10
 
 class Server {
-public:
-    Server(const std::string& port);
-    ~Server();
-    void start();
-
-private:
-    int sfd;  // Listening socket file descriptor
-    std::string port;
-    std::vector<pollfd> fds;
-    void handle_client(int i);
-    void setup_listening_socket();
+    private:
+        int sfd;  // Listening socket file descriptor
+        std::string port;
+        std::vector<pollfd> fds;
+        void handle_client(int i);
+        void setup_listening_socket();
+    public:
+        Server(const std::string& port);
+        ~Server();
+        void start();
 };
 
 Server::Server(const std::string& port) : port(port) {
@@ -60,6 +59,11 @@ void Server::setup_listening_socket() {
         if (sfd == -1) {
             continue;
         }
+        // Add socket options in your server code to allow reuse of the address
+        // It allows you to restart the server without waiting
+        int opt = 1;
+        setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+        // Set the socket to non-blocking mode
         fcntl(sfd, F_SETFL, O_NONBLOCK);
         if (bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0) {
             break;  // Success
@@ -85,19 +89,15 @@ void Server::start() {
 
     // Pre-size the vector to hold MAX_CLIENTS + 1 (including listening socket)
     fds.resize(MAX_CLIENTS + 1);
-    
     // Initialize the listening socket
     fds[0].fd = sfd;
     fds[0].events = POLLIN;
-    
     // Initialize client slots
     for (int i = 1; i <= MAX_CLIENTS; i++) {
         fds[i].fd = -1;
         fds[i].events = POLLIN;
     }
-
     std::cout << "Server is listening on port " << port << "...\n";
-
     while (true) {
         // Use fds.size() instead of nfds
         int poll_count = poll(fds.data(), fds.size(), -1);
@@ -106,7 +106,6 @@ void Server::start() {
             perror("poll");
             exit(EXIT_FAILURE);
         }
-
         // Check for new connections
         if (fds[0].revents & POLLIN) {
             struct sockaddr_storage peer_addr;
@@ -129,10 +128,10 @@ void Server::start() {
                 }
             }
         }
-
         // Check client sockets
         for (size_t i = 1; i < fds.size(); i++) {
             if (fds[i].fd != -1 && fds[i].revents & POLLIN) {
+                // TODO: routing
                 handle_client(i);
             }
         }
@@ -142,23 +141,35 @@ void Server::start() {
 void Server::handle_client(int i) {
     char buf[BUF_SIZE];
     std::string request;
-    ssize_t nread = recv(fds[i].fd, buf, BUF_SIZE - 1, 0);
+    ssize_t nread;
+    std::string response;
+    Request req;
 
+    nread = recv(fds[i].fd, buf, BUF_SIZE - 1, 0);
     if (nread > 0) {
         request.append(buf, nread);
-        std::cout << "Received request from client " << i << ":\n" << request << std::endl;
-        
-        // TO-DO Parse the request
-
-
-        const char* response =
-            "HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/html\r\n"
-            "Content-Length: 11\r\n"
-            "\r\n"
-            "Hello World";
-
-        send(fds[i].fd, response, strlen(response), 0);
+        // std::cout << "Received request from client " << i << ":\n" << request << std::endl;
+        if (req.isMalformedRequest(request))
+        {
+            response = 
+                "HTTP/1.1 400 Bad Request\r\n"
+                "Content-Type: text/plain\r\n"
+                "Content-Length: 11\r\n"
+                "Connection: close\r\n"
+                "\r\n"
+                "Bad Request";
+        }
+        else
+        {
+            req.parseRequest(request);
+            response =
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: text/html\r\n"
+                "Content-Length: 11\r\n"
+                "\r\n"
+                "Hello World";
+        }
+        send(fds[i].fd, response.c_str(), response.size(), 0);
         close(fds[i].fd);
         fds[i].fd = -1;
     } else if (nread == 0 || errno != EAGAIN) {

@@ -5,7 +5,8 @@ CXXFLAGS := -Wall -Wextra -Werror -std=c++17
 
 SRC_PATH = ./srcs
 OBJ_PATH = ./ojbs
-SRC := $(SRC_PATH)/main.cpp
+# SRC := $(SRC_PATH)/main.cpp
+SRC += $(wildcard $(SRC_PATH)/*.cpp)
 
 OBJ := $(SRC:.c=.o)
 

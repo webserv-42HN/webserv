@@ -2,9 +2,17 @@
 #define REQUEST_HPP
 
 #include <iostream>
-#include <string.h>
+#include <string>
+#include <sstream>
 #include <map>
+#include <regex>
 
+enum request_method
+{
+	GET,
+	POST,
+	DELETE
+};
 
 typedef struct t_request
 {
@@ -16,15 +24,17 @@ typedef struct t_request
 class Request
 {
 	private:
-		s_request start_line;
-		// std::map<>
+		s_request req_line;
+		std::vector<std::pair<std::string, std::string>> headers;
+		std::string body;
 	public:
-		static void parseRequest(std::string buf);
+		bool isMalformedRequest(std::string &raw_req);
+		std::string encodeChunkedBody(std::string &body);
+		void parseRequest(std::string buf);
+		void parseRequestLine(std::istringstream& raw_req);
+		void parseHeaders(std::istringstream& raw_req);
+		void parseBody(std::istringstream& raw_req);
 };
 
-// void Request::parseRequest(std::string buf)
-// {
-// 	std::istringstream stream(requestline);
-// }
 
 #endif

@@ -1,0 +1,16 @@
+• A request to your server should never hang forever.
+• Your server must be compatible with the web browser of your choice.
+• We will consider that NGINX is HTTP 1.1 compliant and may be used to compare headers and answer behaviors.
+• Your HTTP response status codes must be accurate.
+• You server must have default error pages if none are provided.
+• You can’t use fork for something else than CGI (like PHP, or Python, and so forth).
+• You must be able to serve a fully static website.
+• Clients must be able to upload files.
+• You need at least GET, POST, and DELETE methods.
+
+• When your server receives a chunked request, it must:
+    - Decode the chunked body into a single continuous body (unchunk it).
+    - Pass the raw, decoded body to the CGI script.
+    - Do not include Transfer-Encoding: chunked in the environment variables passed to CGI — instead, set CONTENT_LENGTH if possible.
+    - CGI programs expect the body to end with EOF, not chunked syntax like 0\r\n\r\n.
+• Failing to unchunk can cause the CGI to misinterpret or hang, because it doesn’t know how to deal with chunked formatting.
