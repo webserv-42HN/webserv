@@ -28,6 +28,10 @@ void Server::mainLoop() {
 					handleClientData(poll_fds[i].fd);
 				}
 			}
+
+			if (poll_fds[i].revents & POLLOUT) {
+				handleClientWrite(poll_fds[i].fd);
+			}
 		}
 	}
 }
@@ -65,8 +69,36 @@ void Server::handleClientData(int client_fd) {
 		response = Response::build(body);
 	}
 
-	send(client_fd, response.c_str(), response.length(), 0);
+	responses[client_fd] = response;
 
+	for (auto& pfd : poll_fds) {
+		if (pfd.fd == client_fd) {
+			pfd.events = POLLOUT;
+			pfd.revents = 0;
+
+			break;
+		}
+	}
+}
+
+void Server::handleClientWrite(int client_fd) {
+	auto it = responses.find(client_fd);
+	if (it == responses.end()) {
+		std::cerr << "No response found for client " << client_fd << std::endl;
+		closeClient(client_fd);
+		return ;
+	}
+	const std::string& response = it->second;
+	ssize_t bytes_sent = send(client_fd, response.c_str(), response.length(), 0);
+	if (bytes_sent <= 0) {
+		perror("send");
+		closeClient(client_fd);
+		responses.erase(client_fd);
+		return ;
+	}
+	std::cout << "Sent response to client :\n" << response << std::endl;
+
+	responses.erase(client_fd);
 	closeClient(client_fd);
 }
 

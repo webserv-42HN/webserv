@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <poll.h>
+#include <unordered_map>
 
 class Server {
 	public:
@@ -16,6 +17,7 @@ class Server {
 
 		void handleNewConnection();
 		void handleClientData(int client_fd);
+		void handleClientWrite(int client_fd);
 		void closeClient(int client_fd);
 
 		int port;
@@ -23,4 +25,5 @@ class Server {
 		int server_fd;
 		std::vector<struct pollfd> poll_fds;
 		static bool running;
+		std::unordered_map<int, std::string> responses;
 };
