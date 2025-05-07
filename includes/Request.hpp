@@ -7,13 +7,6 @@
 #include <map>
 #include <regex>
 
-enum request_method
-{
-	GET,
-	POST,
-	DELETE
-};
-
 typedef struct t_request
 {
 	std::string method;
@@ -34,7 +27,10 @@ class Request
 		void parseRequestLine(std::istringstream& raw_req);
 		void parseHeaders(std::istringstream& raw_req);
 		void parseBody(std::istringstream& raw_req);
+		void printRequest();
+		
+		std::string routing(std::string method, std::string url);
+		s_request getRequestLine();
 };
-
 
 #endif

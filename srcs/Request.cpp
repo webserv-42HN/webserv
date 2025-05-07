@@ -5,12 +5,13 @@
 // CRLF
 // [ message-body ]
 
+// field-line   = field-name ":" OWS field-value OWS
+
 // <METHOD> <URL> <HTTP_VERSION> ->Request line
 // <Header-Field-1>: <value>
 // <Header-Field-2>: <value>
 // ...
 // <Body (optional)>
-// field-line   = field-name ":" OWS field-value OWS
 
 // GET /index.html HTTP/1.1
 // Host: www.example.com
@@ -24,15 +25,7 @@ void Request::parseRequest(std::string buf) {
     parseRequestLine(raw_req);
     parseHeaders(raw_req);
     parseBody(raw_req);
-    std::cout << "---request line---" << std::endl;
-    std::cout << "method: " << req_line.method;
-    std::cout << " | url: " << req_line.url;
-    std::cout << " | http_version: " << req_line.http_version << std::endl;
-    std::cout << "---headers---" << std::endl;
-    for (const auto& headers : headers)
-        std::cout << headers.first << " : " << headers.second << std::endl;
-    std::cout << "---body---" << std::endl;
-    std::cout << body << std::endl;
+    printRequest();
 }
 
 void Request::parseRequestLine(std::istringstream& raw_req) {
@@ -124,7 +117,6 @@ bool Request::isMalformedRequest(std::string& raw_req) {
 // "5\r\npedia\r\n"
 // "E\r\n in\r\n\r\nchunks.\r\n"
 // "0\r\n\r\n"
-
 std::string Request::encodeChunkedBody(std::string& body) {
     std::istringstream iss(body);
     std::string decoded_body;
@@ -147,4 +139,8 @@ std::string Request::encodeChunkedBody(std::string& body) {
         iss.ignore(2); // Ignore CRLF after chunk
     }
     return decoded_body;
+}
+
+s_request Request::getRequestLine() {
+	return req_line;
 }

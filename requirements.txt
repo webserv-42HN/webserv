@@ -14,3 +14,24 @@
     - Do not include Transfer-Encoding: chunked in the environment variables passed to CGI — instead, set CONTENT_LENGTH if possible.
     - CGI programs expect the body to end with EOF, not chunked syntax like 0\r\n\r\n.
 • Failing to unchunk can cause the CGI to misinterpret or hang, because it doesn’t know how to deal with chunked formatting.
+
+./www/
+├── index.html                # Default page for "/"
+├── about.html                # Static page for "/about"
+├── css/
+│   └── style.css             # Stylesheet for "/css/style.css"
+├── js/
+│   └── app.js                # JavaScript for frontend logic
+├── images/
+│   └── logo.png              # Image for "/images/logo.png"
+├── docs/
+│   └── index.html            # Directory listing for "/docs" or auto-indexed content
+├── error/
+│   ├── 404.html              # Custom error page
+│   └── 500.html              # Server error page
+├── api/                      # For API, might be dynamically handled
+│   ├── users.json            # Static API data, or placeholder
+│   └── products.json         # Another static API resource
+└── uploads/
+    └── userfile.pdf          # User-uploaded files
+
