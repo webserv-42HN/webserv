@@ -14,10 +14,6 @@ HttpMethod Response::methodToEnum(std::string method) {
     return UNKNOWN; // Invalid method
 }
 
-// std::string Response::getHtmlFile(int statusCode) {
-//     return res_dir + std::to_string(statusCode) + ".html";
-// }
-
 std::string Response::getStatusLine(int statusCode) {
     std::string reason;
     switch (statusCode) {

@@ -19,6 +19,7 @@ class Request
 	private:
 		s_request req_line;
 		std::vector<std::pair<std::string, std::string>> headers;
+		std::string content_type;
 		std::string body;
 	public:
 		bool isMalformedRequest(std::string &raw_req);
@@ -27,9 +28,8 @@ class Request
 		void parseRequestLine(std::istringstream& raw_req);
 		void parseHeaders(std::istringstream& raw_req);
 		void parseBody(std::istringstream& raw_req);
+		void parseContentType();
 		void printRequest();
-		
-		std::string routing(std::string method, std::string url);
 		s_request getRequestLine();
 };
 

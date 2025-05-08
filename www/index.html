@@ -1,64 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Welcome to Mini Serv!</title>
-	<style>
-		body {
-			font-family: 'Segoe UI', sans-serif;
-			text-align: center;
-			padding: 55px;
-			background-color: #f9f9f9;
-		}
-		h1 {
-			color: #333;
-			margin-bottom: 30px;
-		}
-		.progress-container {
-			width: 80%;
-			max-width: 400px;
-			margin: 0 auto;
-			background-color: #eee;
-			border: 9px solid #f3f3f3;
-			border-radius: 20px;
-			overflow: hidden;
-			box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-		}
-		.progress-bar {
-			width: 0%;
-			height: 20px;
-			background-color: #3498db;
-			transition: width 0.3s ease-in-out;
-		}
-		.message {
-			margin-top: 20px;
-			font-size: 1.2em;
-			color: #666;
-		}
-	</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Mini Serv!</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      background-color: #f9f9f9;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .progress-container {
+      width: 80%;
+      max-width: 400px;
+      margin-bottom: 40px;
+      background-color: #eee;
+      border: 9px solid #f3f3f3;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 20px;
+      background-color: #3498db;
+      transition: width 0.3s ease-in-out;
+    }
+
+    .message {
+      margin-top: 30px;  /* Increased margin to make the distance bigger */
+      font-size: 1.2em;
+      color: #666;
+    }
+
+    .upload-box {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      max-width: 400px;
+      width: 100%;
+      margin-top: 40px; /* Additional margin to further separate from the progress bar */
+    }
+
+    .upload-box h2 {
+      margin-top: 0;
+      font-size: 1.5rem;
+    }
+
+    .form-control {
+      margin-bottom: 1rem;
+    }
+
+    input[type="file"] {
+      display: block;
+      width: 100%;
+    }
+
+    button {
+      background: #4b80b4;
+      color: white;
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    button:hover {
+      background: #4b80b4;
+    }
+  </style>
 </head>
 
 <body>
-	<h1>Mini Serv is starting...</h1>
-	<div class="progress-container">
-		<div class="progress-bar" id="progress-bar"></div>
-	</div>
-	<div class="message" id="message">Loading...</div>
+  <h1>Mini Serv is starting...</h1>
+  
+  <!-- Progress Bar -->
+  <div class="progress-container">
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+  <div class="message" id="message">Loading...</div>
 
-	<script>
-		let progress = 0;
-		const bar = document.getElementById('progress-bar');
-		const msg = document.getElementById('message');
+  <!-- File Upload Form -->
+  <div class="upload-box">
+    <h2>Upload a File</h2>
+    <form action="/uploads" method="POST" enctype="multipart/form-data">
+      <div class="form-control">
+        <input type="file" id="file" name="file" required />
+      </div>
+      <button type="submit">Upload</button>
+    </form>
+  </div>
 
-		const interval = setInterval(() => {
-			progress += 10;
-			bar.style.width = progress + '%';
-			if (progress >= 100) {
-				clearInterval(interval);
-				msg.textContent = "Mini serv is Ready";
-			}
-		}, 300);
-	</script>
+  <script>
+    let progress = 0;
+    const bar = document.getElementById('progress-bar');
+    const msg = document.getElementById('message');
+
+    const interval = setInterval(() => {
+      progress += 10;
+      bar.style.width = progress + '%';
+      if (progress >= 100) {
+        clearInterval(interval);
+        msg.textContent = "Mini Serv is Ready";
+      }
+    }, 300);
+  </script>
 </body>
 </html>

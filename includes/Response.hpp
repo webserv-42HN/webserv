@@ -45,29 +45,26 @@ using RouteHandler = std::function<t_routeConfig(std::string)>;
 // typedef std::function<t_routeConfig(std::string)> RouteHandler; -> C98++
 
 class Response {
-    private:
+    protected:
         std::string error_dir = "./www/error/";
         t_routeConfig route_config;
         std::unordered_map<std::string, RouteHandler> routes;
-        public:
+    public:
         Response();
         ~Response();
         
-        t_routeConfig getRouteConfig(std::string url);
-        t_routeConfig RootHandler(std::string url);
-        t_routeConfig AboutHandler(std::string url);
-        t_routeConfig DocsHandler(std::string url);
-        t_routeConfig NotFoundHandler();
+        std::string routing(std::string method, std::string url);
+        std::string generatingResponse(HttpMethod method, std::string full_url);
+        std::string getGetResponse(std::string path, int statusCode);
+        std::string getPostResponse(std::string path);
+        std::string getDeleteResponse(std::string path);
         std::string getErrorResponse(int statusCode);    
         
-        std::string routing(std::string method, std::string url);
-        std::string getResponse(std::string path, int statusCode);
-        std::string getHtmlFile(int statusCode);
+        std::string buildResponse(std::string body, int statusCode);
         std::string getStatusLine(int statusCode);
         HttpMethod methodToEnum(std::string method);
         std::string generateDirectoryListing(const std::string& path);
         bool isDirectory(const std::string& path);
-        // t_routeConfig ErrorHandler(int statusCode);
 };
 
 #endif
