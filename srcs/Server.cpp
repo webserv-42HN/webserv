@@ -109,19 +109,19 @@ void Server::handle_client(int i) {
     std::string request;
     ssize_t nread;
     std::string response;
-    Request req;
+    // Request req;
     Response res;
 
     nread = recv(fds[i].fd, buf, BUF_SIZE - 1, 0);
     if (nread > 0) {    
         request.append(buf, nread);
         // request = "GET /\r\n\r\n";
-        if (req.isMalformedRequest(request))
-            response = res.getErrorResponse(400); 
+        if (res.isMalformedRequest(request))
+        response = res.getErrorResponse(400); 
         else {
-            req.parseRequest(request);
-            response = res.routing(req.getRequestLine().method,
-                                    req.getRequestLine().url);
+            res.parseRequest(request);
+            response = res.routing(res.getRequestLine().method,
+                                    res.getRequestLine().url);
             // response = res.getResponse(res.getHtmlFile(200), 200);
         }
         send(fds[i].fd, response.c_str(), response.size(), 0);

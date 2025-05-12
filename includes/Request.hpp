@@ -16,7 +16,7 @@ typedef struct t_request
 
 class Request
 {
-	private:
+	protected:
 		s_request req_line;
 		std::vector<std::pair<std::string, std::string>> headers;
 		std::string content_type;

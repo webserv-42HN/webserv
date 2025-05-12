@@ -14,6 +14,7 @@ class Router : public Response {
         t_routeConfig AboutHandler(std::string url);
         t_routeConfig DocsHandler(std::string url);
         t_routeConfig UploadsHandler(std::string url);
+        t_routeConfig SubmitHandler(std::string url);
         t_routeConfig NotFoundHandler();
 };
 

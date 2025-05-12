@@ -1,12 +1,11 @@
 #include "../includes/Response.hpp"
 #include "../includes/Router.hpp"
+#include "../includes/Request.hpp"
 
 Response::Response() {
-    // Constructor
 }
 
 Response::~Response() {
-    // Destructor
 }
 
 std::string Response::routing(std::string method, std::string url) {
@@ -95,13 +94,57 @@ std::string Response::getGetResponse(std::string path, int statusCode) {
     return buildResponse(body, statusCode);
 }
 
+std::string responseApplication(std::string body) {
+    std::string resBody = "<html><body><h2>Submitted Form Data:</h2><ul>";
+    std::istringstream iss(body);
+    std::string pair;
+
+    // Split by '&' first
+    while (std::getline(iss, pair, '&')) {
+        size_t pos = pair.find('=');
+        if (pos != std::string::npos) {
+            std::string key = pair.substr(0, pos);
+            std::string value = pair.substr(pos + 1);
+            // URL decode the value
+            // Simple URL decode for common characters
+            size_t pos_plus;
+            while ((pos_plus = value.find('+')) != std::string::npos) {
+                value.replace(pos_plus, 1, " ");
+            }
+            resBody += "<li><strong>" + key + ":</strong> " + value + "</li>";
+        }
+    }
+    resBody += "</ul></body></html>";
+    return resBody;
+}
+
 std::string Response::getPostResponse(std::string path) {
-    // Handle POST request
-    (void)path; // Suppress unused variable warning
-    // For now, just return a simple response
-    std::string body = "<html><body><h1>POST request received</h1></body></html>";
-    return buildResponse(body, 200);
-    // return getErrorResponse(501); // Not Implemented
+    std::string resBody;
+    (void)path;
+    // Check content type first
+    std::cout << "TEST TEST TEST" << content_type << std::endl;
+    if (content_type.empty()) {
+        return getErrorResponse(400); // Bad Request - No content type
+    }
+    // Handle different content types
+    if (content_type == " application/x-www-form-urlencoded") {
+        if (body.empty()) {
+            return getErrorResponse(400); // Bad Request - Empty body
+        }
+        resBody = responseApplication(body);
+    } 
+    else if (content_type.find("multipart/form-data") != std::string::npos) {
+        // Handle file uploads
+        // if (handleFileUpload(path)) {
+            resBody = "<html><body><h1>File uploaded successfully</h1></body></html>";
+        // } else {
+            // return getErrorResponse(500); // Internal Server Error
+        // }
+    }
+    else {
+        return getErrorResponse(415); // Unsupported Media Type
+    }
+    return buildResponse(resBody, 200);
 }
 
 std::string Response::getDeleteResponse(std::string path) {

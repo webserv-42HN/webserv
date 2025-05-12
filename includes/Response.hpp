@@ -10,6 +10,7 @@
 #include <functional>
 #include <sys/stat.h>
 #include <dirent.h>
+#include "../includes/Request.hpp"
 
 /* 
 HTTP Status Codes
@@ -44,11 +45,13 @@ typedef struct RouteConfig {
 using RouteHandler = std::function<t_routeConfig(std::string)>;
 // typedef std::function<t_routeConfig(std::string)> RouteHandler; -> C98++
 
-class Response {
+class Response : public Request
+{
     protected:
         std::string error_dir = "./www/error/";
         t_routeConfig route_config;
         std::unordered_map<std::string, RouteHandler> routes;
+
     public:
         Response();
         ~Response();
@@ -65,6 +68,7 @@ class Response {
         HttpMethod methodToEnum(std::string method);
         std::string generateDirectoryListing(const std::string& path);
         bool isDirectory(const std::string& path);
+        void test() { std::cout << "TEST TEST TEST" << content_type << std::endl; }
 };
 
 #endif
