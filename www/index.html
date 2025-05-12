@@ -96,13 +96,41 @@
   <div class="message" id="message">Loading...</div>
 
   <!-- Submit Text Form -->
-  <form action="/submit" method="POST">
-    <label for="name">Your Name:</label>
+  <style>
+  #submit-form {
+  margin-top: 60px; /* or any larger value you want */
+  }
+  </style>
+  <form id="submit-form">
+        <label for="name">Your Name:</label>
     <input type="text" id="name" name="name" required>
     <label for="age">Your Age:</label>
     <input type="text" id="age" name="age" required>
     <button type="submit">Send</button>
   </form>
+
+  <script>
+    document.getElementById('submit-form').addEventListener('submit', async function (e) {
+      e.preventDefault(); // Prevent the page from reloading
+
+      const form = e.target;
+      const formData = new FormData(form);
+      const data = new URLSearchParams(formData).toString();
+
+      const response = await fetch('/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: data
+      });
+
+      const html = await response.text();
+      document.getElementById('server-response').innerHTML = html;
+    });
+  </script>
+
+  <div id="server-response" style="margin-top: 20px;"></div>
 
   <!-- File Upload Form -->
   <div class="upload-box">

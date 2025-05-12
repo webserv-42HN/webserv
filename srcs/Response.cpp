@@ -111,7 +111,7 @@ std::string responseApplication(std::string body) {
             while ((pos_plus = value.find('+')) != std::string::npos) {
                 value.replace(pos_plus, 1, " ");
             }
-            resBody += "<li><strong>" + key + ":</strong> " + value + "</li>";
+            resBody += "<li> <strong>" + key + ":</strong> " + value + "</li>";
         }
     }
     resBody += "</ul></body></html>";
@@ -127,6 +127,7 @@ std::string Response::getPostResponse(std::string path) {
         return getErrorResponse(400); // Bad Request - No content type
     }
     // Handle different content types
+    // TODO remove space in
     if (content_type == " application/x-www-form-urlencoded") {
         if (body.empty()) {
             return getErrorResponse(400); // Bad Request - Empty body
