@@ -80,9 +80,9 @@ struct ServerBlock {
 };
 
 class Parser {
-public:
+  public:
     Parser(const std::vector<std::string>& tokens)
-        : tokens(tokens), pos(0) {}
+        : tokens(tokens), pos(0), hasError(false) {}
 
     std::vector<ServerBlock> parse() {
         std::vector<ServerBlock> servers;
@@ -90,16 +90,22 @@ public:
             if (peek() == "server") {
                 servers.push_back(parseServer());
             } else {
-                std::cerr << "Unexpected token: " << peek() << std::endl;
+                std::cerr << "Error: Unexpected token: " << peek() << std::endl;
                 advance();
+                hasError = true;
             }
         }
         return servers;
     }
 
-private:
+    bool hasParsingError() const {
+        return hasError;
+    }
+
+  private:
     const std::vector<std::string>& tokens;
     size_t pos;
+    bool hasError;  // Track parsing errors
 
     std::string peek() const {
         return pos < tokens.size() ? tokens[pos] : "";
@@ -122,38 +128,73 @@ private:
     }
 
     ServerBlock parseServer() {
-        ServerBlock server;
-        match("server");
-        match("{");
-        while (!match("}")) {
-            if (peek() == "location") {
-                server.locations.push_back(parseLocation());
-            } else {
-                server.directives.push_back(parseDirective());
-            }
-        }
-        return server;
+      ServerBlock server;
+      match("server");
+      if (!match("{")) {
+          std::cerr << "Error: Expected '{' after 'server'" << std::endl;
+          hasError = true;
+          return server;
+      }
+      while (!match("}")) {
+          if (end()) {
+              std::cerr << "Error: Unexpected end of file, expected '}'" << std::endl;
+              hasError = true;
+              break;
+          }
+          if (peek() == "location") {
+              server.locations.push_back(parseLocation());
+          } else {
+              server.directives.push_back(parseDirective());
+          }
+      }
+      return server;
     }
 
     LocationBlock parseLocation() {
-        LocationBlock location;
-        match("location");
-        location.path = advance();
-        match("{");
-        while (!match("}")) {
-            location.directives.push_back(parseDirective());
-        }
-        return location;
+      LocationBlock location;
+      match("location");
+      if (end()) {
+          std::cerr << "Error: Unexpected end of file, expected location path" << std::endl;
+          hasError = true;
+          return location;
+      }
+      location.path = advance();
+      if (!match("{")) {
+          std::cerr << "Error: Expected '{' after location path" << std::endl;
+          hasError = true;
+          return location;
+      }
+      while (!match("}")) {
+          if (end()) {
+              std::cerr << "Error: Unexpected end of file, expected '}'" << std::endl;
+              hasError = true;
+              break;
+          }
+          location.directives.push_back(parseDirective());
+      }
+      return location;
     }
 
     Directive parseDirective() {
-        Directive directive;
-        directive.name = advance();
-        while (peek() != ";" && !end()) {
-            directive.args.push_back(advance());
-        }
-        match(";");
-        return directive;
+      Directive directive;
+      if (end()) {
+          std::cerr << "Error: Unexpected end of file, expected directive name" << std::endl;
+          hasError = true;
+          return directive;
+      }
+      
+      directive.name = advance();
+      
+      while (peek() != ";" && !end()) {
+          directive.args.push_back(advance());
+      }
+      
+      if (!match(";")) {
+          std::cerr << "Error: Expected ';' after directive " << directive.name << std::endl;
+          hasError = true;
+      }
+      
+      return directive;
     }
 };
 
@@ -256,22 +297,51 @@ std::vector<ServerConfig> buildAllConfigs(const std::vector<ServerBlock>& blocks
 #include <fstream>
 #include <sstream>
 
+bool hasValidConfigExtension(const std::string& filename) {
+  // Check if the file has a valid config extension
+  size_t dotPos = filename.find_last_of('.');
+  if (dotPos != std::string::npos) {
+      std::string extension = filename.substr(dotPos);
+      return (extension == ".conf" || extension == ".config" || extension == ".cfg");
+  }
+  return false;
+}
+
+bool looksLikeConfigFile(const std::vector<std::string>& tokens) {
+  // Simple heuristic: config files typically start with "server" and contain "{" "};"
+  if (tokens.empty()) return false;
+  
+  // Check if first non-comment token is "server"
+  for (const auto& token : tokens) {
+      if (token == "server") return true;
+      // Skip comments (tokens starting with #)
+      if (!token.empty() && token[0] != '#') return false;
+  }
+  
+  return false;
+}
+
 int main(int argc, char *argv[]) {
   std::string config;
   std::string filename = "webserv.conf";  // Default filename
   
-  // Allow custom config file via command line
-  if (argc > 1) {
-      filename = argv[1];
+  if (argc != 2)
+    return 1;
+
+  filename = argv[1];
+  // Validate config file extension
+  if (!hasValidConfigExtension(filename)) {
+    std::cerr << "Error: File '" << filename << "' does not have a valid config extension (.conf, .config, .cfg)" << std::endl;
+    return 1;
   }
-  
+    
   // Read the file
   std::ifstream configFile(filename);
   if (!configFile.is_open()) {
       std::cerr << "Error: Could not open config file: " << filename << std::endl;
       return 1;
   }
-  
+
   // Read the entire file into the config string
   std::stringstream buffer;
   buffer << configFile.rdbuf();
@@ -294,8 +364,10 @@ int main(int argc, char *argv[]) {
   Parser parser(tokenValues);
   std::vector<ServerBlock> servers = parser.parse();
 
-  for (const auto& server : servers) {
-      printServer(server);
+  // Check if parsing had errors and exit if needed
+  if (parser.hasParsingError()) {
+    std::cerr << "Fatal error: Configuration file is incomplete or malformed." << std::endl;
+    return 1;
   }
 
   std::vector<ServerConfig> serverConfigs = buildAllConfigs(servers);
