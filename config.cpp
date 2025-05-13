@@ -11,7 +11,7 @@ struct Token {
 };
 
 class RegexTokenizer {
-public:
+  public:
     RegexTokenizer(const std::string& input) : input(input), pos(0) {}
 
     std::vector<Token> tokenize() {
@@ -49,7 +49,7 @@ public:
         return tokens;
     }
 
-private:
+  private:
     std::string input;
     size_t pos;
 };
@@ -253,33 +253,33 @@ std::vector<ServerConfig> buildAllConfigs(const std::vector<ServerBlock>& blocks
     return configs;
 }
 
+#include <fstream>
+#include <sstream>
 
-int main() {
-  std::string config = R"(
-      server {
-          listen 8080;
-          server_name example.com;
+int main(int argc, char *argv[]) {
+  std::string config;
+  std::string filename = "webserv.conf";  // Default filename
+  
+  // Allow custom config file via command line
+  if (argc > 1) {
+      filename = argv[1];
+  }
+  
+  // Read the file
+  std::ifstream configFile(filename);
+  if (!configFile.is_open()) {
+      std::cerr << "Error: Could not open config file: " << filename << std::endl;
+      return 1;
+  }
+  
+  // Read the entire file into the config string
+  std::stringstream buffer;
+  buffer << configFile.rdbuf();
+  config = buffer.str();
+  
+  // Close the file
+  configFile.close();
 
-          location / {
-              methods GET;
-              root www/html;
-              default_file index2.html;
-          }
-          client_max_body_size 10;
-      }
-
-      server {
-          listen 8080;
-          server_name test.com;
-
-          location / {
-              methods GET;
-              root www/html;
-              default_file index1.html;
-          }
-          client_max_body_size 100;
-      }
-  )";
 
   RegexTokenizer tokenizer(config);
   auto tokens = tokenizer.tokenize();
