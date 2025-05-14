@@ -68,7 +68,7 @@ class Response : public Request
         HttpMethod methodToEnum(std::string method);
         std::string generateDirectoryListing(const std::string& path);
         bool isDirectory(const std::string& path);
-        void test() { std::cout << "TEST TEST TEST" << content_type << std::endl; }
+        bool handleFileUpload(const std::string& path, const std::string& body, const std::string& boundary);
 };
 
 #endif

@@ -56,7 +56,7 @@ t_routeConfig Router::UploadsHandler(std::string url) {
     
     (void)url;
     config.allowed_methods = {GET, POST};
-    config.root_dir = "./www/uploads";
+    config.root_dir = "./www";
     config.redirect_to = "";
     config.autoindex = false;
     return config;

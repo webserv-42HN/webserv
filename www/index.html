@@ -116,7 +116,6 @@
       const form = e.target;
       const formData = new FormData(form);
       const data = new URLSearchParams(formData).toString();
-
       const response = await fetch('/submit', {
         method: 'POST',
         headers: {
@@ -124,7 +123,6 @@
         },
         body: data
       });
-
       const html = await response.text();
       document.getElementById('server-response').innerHTML = html;
     });

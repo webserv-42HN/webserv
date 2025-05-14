@@ -13,7 +13,7 @@ std::string Response::routing(std::string method, std::string url) {
     HttpMethod http_method = methodToEnum(method);
     t_routeConfig config = router.getRouteConfig(url);
     std::string response;
-
+    std::string full_path;
     // Handle redirects first
     if (!config.redirect_to.empty()) {
         response = "HTTP/1.1 301 Moved Permanently\r\n";
@@ -27,7 +27,7 @@ std::string Response::routing(std::string method, std::string url) {
     if (it == config.allowed_methods.end())
         return getErrorResponse(405);
     // Build file path
-    std::string full_path = config.root_dir + url;
+    full_path = config.root_dir + url;
     if (isDirectory(full_path)) {
         std::string index_path = full_path + "/index.html";
         std::ifstream index_file(index_path);
@@ -120,31 +120,32 @@ std::string responseApplication(std::string body) {
 
 std::string Response::getPostResponse(std::string path) {
     std::string resBody;
-    (void)path;
     // Check content type first
-    std::cout << "TEST TEST TEST" << content_type << std::endl;
     if (content_type.empty()) {
         return getErrorResponse(400); // Bad Request - No content type
     }
     // Handle different content types
-    // TODO remove space in
-    if (content_type == " application/x-www-form-urlencoded") {
-        if (body.empty()) {
+    if (content_type == "application/x-www-form-urlencoded") {
+        std::cout << "PATH POST: " << path << std::endl;
+
+        if (body.empty())
             return getErrorResponse(400); // Bad Request - Empty body
-        }
         resBody = responseApplication(body);
     } 
     else if (content_type.find("multipart/form-data") != std::string::npos) {
-        // Handle file uploads
-        // if (handleFileUpload(path)) {
+        size_t boundary_pos = content_type.find("boundary=");
+        if (boundary_pos == std::string::npos)
+            return getErrorResponse(400);
+        std::string boundary = "--" + content_type.substr(boundary_pos + 9);
+        if (!handleFileUpload(path, body, boundary)) {
+            return getErrorResponse(500);
             resBody = "<html><body><h1>File uploaded successfully</h1></body></html>";
-        // } else {
-            // return getErrorResponse(500); // Internal Server Error
-        // }
+        }
+        else
+            return getErrorResponse(500); // Internal Server Error
     }
-    else {
+    else
         return getErrorResponse(415); // Unsupported Media Type
-    }
     return buildResponse(resBody, 200);
 }
 
