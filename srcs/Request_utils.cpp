@@ -54,7 +54,7 @@ bool Request::isMalformedRequest(std::string& raw_req) {
 // "5\r\npedia\r\n"
 // "E\r\n in\r\n\r\nchunks.\r\n"
 // "0\r\n\r\n"
-std::string Request::encodeChunkedBody(std::string& body) {
+std::string Request::encodeChunkedBody(const std::string& body) {
     std::istringstream iss(body);
     std::string decoded_body;
     std::string line;

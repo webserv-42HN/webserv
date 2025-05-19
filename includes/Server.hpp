@@ -14,7 +14,7 @@
 #include <errno.h>
 
 
-#define BUF_SIZE 1024
+#define BUF_SIZE 8192
 #define MAX_CLIENTS 10
 
 class Server {

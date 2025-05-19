@@ -33,7 +33,7 @@ t_routeConfig Router::getRouteConfig(std::string url) {
 t_routeConfig Router::RootHandler(std::string url) {
     t_routeConfig config;
     (void)url;
-    config.allowed_methods = {GET, POST};
+    config.allowed_methods = {GET, POST, DELETE};
     config.root_dir = "./www";
     config.redirect_to = "";
     config.autoindex = false;
@@ -55,10 +55,10 @@ t_routeConfig Router::UploadsHandler(std::string url) {
     t_routeConfig config;
     
     (void)url;
-    config.allowed_methods = {GET, POST};
-    config.root_dir = "./www";
+    config.allowed_methods = {GET, POST, DELETE};
+    config.root_dir = "./www/uploads";
     config.redirect_to = "";
-    config.autoindex = false;
+    config.autoindex = true;
     return config;
 }
 
@@ -77,8 +77,8 @@ t_routeConfig Router::SubmitHandler(std::string url) {
     t_routeConfig config;
     
     (void)url;
-    config.allowed_methods = {POST};
-    config.root_dir = "./www";
+    config.allowed_methods = {GET, POST, DELETE};
+    config.root_dir = "./www/submit";
     config.redirect_to = "";
     config.autoindex = false;
     return config;

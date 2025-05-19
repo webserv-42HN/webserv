@@ -9,6 +9,7 @@ class Router : public Response {
     public:
         Router();
         ~Router();
+        
         t_routeConfig getRouteConfig(std::string url);
         t_routeConfig RootHandler(std::string url);
         t_routeConfig AboutHandler(std::string url);

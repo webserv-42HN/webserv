@@ -109,26 +109,71 @@ void Server::handle_client(int i) {
     std::string request;
     ssize_t nread;
     std::string response;
-    // Request req;
     Response res;
 
-    nread = recv(fds[i].fd, buf, BUF_SIZE - 1, 0);
-    if (nread > 0) {    
+    // Step 1: Read until headers are complete
+    while (true) {
+        nread = recv(fds[i].fd, buf, BUF_SIZE - 1, 0);
+        if (nread <= 0) break;
         request.append(buf, nread);
-        // request = "GET /\r\n\r\n";
-        if (res.isMalformedRequest(request))
-        response = res.getErrorResponse(400); 
-        else {
-            res.parseRequest(request);
-            response = res.routing(res.getRequestLine().method,
-                                    res.getRequestLine().url);
-            // response = res.getResponse(res.getHtmlFile(200), 200);
-        }
-        send(fds[i].fd, response.c_str(), response.size(), 0);
-        close(fds[i].fd);
-        fds[i].fd = -1;
-    } else if (nread == 0 || errno != EAGAIN) {
-        close(fds[i].fd);
-        fds[i].fd = -1;
+        // Check if we reached the end of headers
+        if (request.find("\r\n\r\n") != std::string::npos) break;
     }
+    // Step 2: Parse headers to get Content-Length
+    size_t header_end = request.find("\r\n\r\n");
+    if (header_end == std::string::npos) {
+        response = res.getErrorResponse(400);
+    } else {
+        header_end += 4; // End of headers
+        res.parseRequest(request);
+        // Read body if Content-Length is present
+        int contentLength = res.getContentLength(); // Assume you implemented this method
+        int bodyReceived = request.size() - header_end;
+        while (bodyReceived < contentLength) {
+            nread = recv(fds[i].fd, buf, BUF_SIZE - 1, 0);
+            if (nread <= 0) break;
+            request.append(buf, nread);
+            bodyReceived += nread;
+        }
+        // Step 3: Route once full request is read
+        if (res.isMalformedRequest(request)) {
+            response = res.getErrorResponse(400);
+        } else {
+            res.parseRequest(request);
+            response = res.routing(res.getRequestLine().method, res.getRequestLine().url);
+        }
+    }
+    // Step 4: Send response
+    send(fds[i].fd, response.c_str(), response.size(), 0);
+    close(fds[i].fd);
+    fds[i].fd = -1;
 }
+
+// void Server::handle_client(int i) {
+//     char buf[BUF_SIZE];
+//     std::string request;
+//     ssize_t nread;
+//     std::string response;
+//     // Request req;
+//     Response res;
+
+//     nread = recv(fds[i].fd, buf, BUF_SIZE - 1, 0);
+//     if (nread > 0) {    
+//         request.append(buf, nread);
+//         // request = "GET /\r\n\r\n";
+//         if (res.isMalformedRequest(request))
+//         response = res.getErrorResponse(400); 
+//         else {
+//             res.parseRequest(request);
+//             response = res.routing(res.getRequestLine().method,
+//                                     res.getRequestLine().url);
+//             // response = res.getResponse(res.getHtmlFile(200), 200);
+//         }
+//         send(fds[i].fd, response.c_str(), response.size(), 0);
+//         close(fds[i].fd);
+//         fds[i].fd = -1;
+//     } else if (nread == 0 || errno != EAGAIN) {
+//         close(fds[i].fd);
+//         fds[i].fd = -1;
+//     }
+// }

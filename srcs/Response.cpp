@@ -1,6 +1,7 @@
 #include "../includes/Response.hpp"
 #include "../includes/Router.hpp"
 #include "../includes/Request.hpp"
+#include <limits>
 
 Response::Response() {
 }
@@ -14,6 +15,7 @@ std::string Response::routing(std::string method, std::string url) {
     t_routeConfig config = router.getRouteConfig(url);
     std::string response;
     std::string full_path;
+
     // Handle redirects first
     if (!config.redirect_to.empty()) {
         response = "HTTP/1.1 301 Moved Permanently\r\n";
@@ -21,26 +23,41 @@ std::string Response::routing(std::string method, std::string url) {
         return response;
     }
     // Check if method is allowed
+    std::cout << "[DEBUG] Method: " << method << std::endl;
     auto it = std::find(config.allowed_methods.begin(),
                         config.allowed_methods.end(),
                         http_method);
     if (it == config.allowed_methods.end())
+    {
+        std::cout << "[DEBUG] Method not allowed:" << method << std::endl;
         return getErrorResponse(405);
-    // Build file path
-    full_path = config.root_dir + url;
+    }
+
+    if (http_method == POST) {
+        if (url == "/submit" || url == "/uploads")
+            return getPostResponse(url);
+        return getErrorResponse(404); // Not found for other POST paths
+    }
+    if (url.find("/uploads") == 0)
+        full_path = "./www" + url;
+    else
+        full_path = config.root_dir + url;
+    struct stat path_stat;
+    if (stat(full_path.c_str(), &path_stat) != 0)
+        return getErrorResponse(404);
     if (isDirectory(full_path)) {
         std::string index_path = full_path + "/index.html";
         std::ifstream index_file(index_path);
-        if (index_file.good())
+        if (index_file.good()) {
+            index_file.close();
             return getGetResponse(index_path, 200);
-        if (config.autoindex)
+        }
+        if (config.autoindex) {
             return generateDirectoryListing(full_path);
-        else
-            return getErrorResponse(403);
+        }
+        return getErrorResponse(403);
     } 
-    else {
-        return generatingResponse(http_method, full_path);
-    }
+    return generatingResponse(http_method, full_path);
 }
 
 std::string Response::generatingResponse(HttpMethod method, std::string full_url) {
@@ -65,97 +82,77 @@ std::string Response::generatingResponse(HttpMethod method, std::string full_url
     return response;
 }
 
-std::string Response::buildResponse(std::string body, int statusCode) {
-    std::ostringstream response;
-    response    << getStatusLine(statusCode)
-                << "Content-Type: text/html\r\n"
-                << "Content-Length: " << body.size() << "\r\n"
-                << "Connection: close\r\n"
-                << "\r\n"
-                << body;
-    return response.str();
-}
-
-std::string Response::getGetResponse(std::string path, int statusCode) {
-    std::ifstream file(path, std::ifstream::binary);
-    if (!file.good())
-        return getErrorResponse(404);
+std::string Response::getGetResponse(const std::string& requested_path, int statusCode) {
+    std::ifstream file(requested_path, std::ifstream::binary);
     if (!file.is_open())
-        return "";
+        return getErrorResponse(404);
+
     file.seekg(0, std::ios::end);
     std::streampos size = file.tellg();
     file.seekg(0, std::ios::beg);
     std::string body(size, '\0');
     if (!file.read(&body[0], size)) {
         file.close();
-        return ""; // Handle read error
+        return getErrorResponse(500); // Read error
     }
+
     file.close();
-    return buildResponse(body, statusCode);
+    return buildResponse(body, statusCode, getMimeType(requested_path));
 }
 
-std::string responseApplication(std::string body) {
-    std::string resBody = "<html><body><h2>Submitted Form Data:</h2><ul>";
-    std::istringstream iss(body);
-    std::string pair;
+std::string Response::getPostResponse(const std::string& url) {
+    std::string resBody;
+    std::string uploadedFile;
 
-    // Split by '&' first
-    while (std::getline(iss, pair, '&')) {
-        size_t pos = pair.find('=');
-        if (pos != std::string::npos) {
-            std::string key = pair.substr(0, pos);
-            std::string value = pair.substr(pos + 1);
-            // URL decode the value
-            // Simple URL decode for common characters
-            size_t pos_plus;
-            while ((pos_plus = value.find('+')) != std::string::npos) {
-                value.replace(pos_plus, 1, " ");
-            }
-            resBody += "<li> <strong>" + key + ":</strong> " + value + "</li>";
+    if (content_type.empty())
+        return getErrorResponse(400); // Bad Request - No Content-Type
+    // Handle URL-encoded form submission (e.g., /submit)
+    if (content_type == "application/x-www-form-urlencoded") {
+        if (body.empty())
+            return getErrorResponse(400);
+        if (url == "/submit") {
+            resBody = responseApplication(body);
+            return buildResponse(resBody, 200, content_type);
+        } else {
+            return getErrorResponse(404); // Not found for this path
         }
     }
-    resBody += "</ul></body></html>";
-    return resBody;
-}
-
-std::string Response::getPostResponse(std::string path) {
-    std::string resBody;
-    // Check content type first
-    if (content_type.empty()) {
-        return getErrorResponse(400); // Bad Request - No content type
-    }
-    // Handle different content types
-    if (content_type == "application/x-www-form-urlencoded") {
-        std::cout << "PATH POST: " << path << std::endl;
-
+    // Handle file uploads (e.g., /uploads)
+    if (content_type.find("multipart/form-data") != std::string::npos) {
         if (body.empty())
-            return getErrorResponse(400); // Bad Request - Empty body
-        resBody = responseApplication(body);
-    } 
-    else if (content_type.find("multipart/form-data") != std::string::npos) {
+            return getErrorResponse(400);
         size_t boundary_pos = content_type.find("boundary=");
         if (boundary_pos == std::string::npos)
             return getErrorResponse(400);
         std::string boundary = "--" + content_type.substr(boundary_pos + 9);
-        if (!handleFileUpload(path, body, boundary)) {
-            return getErrorResponse(500);
-            resBody = "<html><body><h1>File uploaded successfully</h1></body></html>";
+        std::string upload_path = "./www/uploads/";
+        struct stat st;
+        if (stat(upload_path.c_str(), &st) == -1) {
+            if (mkdir(upload_path.c_str(), 0755) == -1)
+                return getErrorResponse(500);
         }
-        else
-            return getErrorResponse(500); // Internal Server Error
+        bool success = handleFileUpload(upload_path, body, boundary, uploadedFile);
+        std::cout << "[DEBUG] handleFileUpload result: " << (success ? "SUCCESS" : "FAILURE") << std::endl;
+        if (success) {   
+            // generateUploadsIndex(upload_path);
+            return buildResponse(resBody, 200, content_type);
+        } else {
+            return getErrorResponse(500); // Upload failed
+        }
     }
-    else
-        return getErrorResponse(415); // Unsupported Media Type
-    return buildResponse(resBody, 200);
+    return getErrorResponse(415); // Unsupported content-type
 }
 
-std::string Response::getDeleteResponse(std::string path) {
-    // Handle DELETE request
-    (void)path; // Suppress unused variable warning
-    // For now, just return a simple response
-    std::string body = "<html><body><h1>DELETE request received</h1></body></html>";
-    return buildResponse(body, 200);
-    // return getErrorResponse(501); // Not Implemented
+std::string Response::getDeleteResponse(const std::string& filepath) {
+    struct stat st;
+    std::cout << "[DEBUG] Deleting file: " << filepath << std::endl;
+    if (stat(filepath.c_str(), &st) != 0) {
+        return getErrorResponse(404); // Not found
+    }
+    if (remove(filepath.c_str()) != 0) {
+        return getErrorResponse(500); // Failed to delete
+    }
+    return buildResponse("File deleted successfully", 200, "text/plain");
 }
 
 std::string Response::getErrorResponse(int statusCode) {

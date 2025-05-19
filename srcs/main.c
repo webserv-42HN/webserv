@@ -8,6 +8,7 @@
 #include <poll.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 // #include <ostream>
 
 int main(int argc, char *argv[])

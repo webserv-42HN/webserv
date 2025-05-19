@@ -23,13 +23,14 @@ class Request
 		std::string body;
 	public:
 		bool isMalformedRequest(std::string &raw_req);
-		std::string encodeChunkedBody(std::string &body);
-		void parseRequest(std::string buf);
+		std::string encodeChunkedBody(const std::string &body);
+		void parseRequest(const std::string &buf);
 		void parseRequestLine(std::istringstream& raw_req);
 		void parseHeaders(std::istringstream& raw_req);
 		void parseBody(std::istringstream& raw_req);
 		void parseContentType();
 		void printRequest();
+		std::string urlDecode(const std::string &src);
 		s_request getRequestLine();
 };
 

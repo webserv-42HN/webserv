@@ -109,37 +109,110 @@
     <button type="submit">Send</button>
   </form>
 
-  <script>
-    document.getElementById('submit-form').addEventListener('submit', async function (e) {
-      e.preventDefault(); // Prevent the page from reloading
+    <script>
+      document.getElementById('submit-form').addEventListener('submit', async function (e) {
+        e.preventDefault(); // Prevent the page from reloading
 
-      const form = e.target;
-      const formData = new FormData(form);
-      const data = new URLSearchParams(formData).toString();
-      const response = await fetch('/submit', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: data
+        const form = e.target;
+        const formData = new FormData(form);
+        const data = new URLSearchParams(formData).toString();
+        const response = await fetch('/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: data
+        });
+        const html = await response.text();
+        document.getElementById('server-response').innerHTML = html;
       });
-      const html = await response.text();
-      document.getElementById('server-response').innerHTML = html;
-    });
-  </script>
+    </script>
 
   <div id="server-response" style="margin-top: 20px;"></div>
 
   <!-- File Upload Form -->
   <div class="upload-box">
-    <h2>Upload a File</h2>
-    <form action="/uploads" method="POST" enctype="multipart/form-data">
-      <div class="form-control">
-        <input type="file" id="file" name="file" required />
-      </div>
-      <button type="submit">Upload</button>
-    </form>
+  <h2>Upload a File</h2>
+  <form id="upload-form" enctype="multipart/form-data">
+    <div class="form-control">
+      <input type="file" id="file" name="file" required />
+    </div>
+    <button type="submit">Upload</button>
+  </form>
   </div>
+
+  <div id="uploaded-files">
+  <h3>Uploaded Files</h3>
+  <ul id="file-list"></ul>
+  </div>
+
+  <script>
+    // Create a file list item with a delete button
+    function createFileListItem(filename) {
+      const li = document.createElement('li');
+
+      const link = document.createElement('a');
+      link.href = `/uploads/${filename}`;
+      link.target = '_blank';
+      link.textContent = filename;
+
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'Delete';
+      delBtn.style.marginLeft = '350px';
+      delBtn.onclick = () => deleteFile(filename, li);
+
+      li.appendChild(link);
+      li.appendChild(delBtn);
+
+      return li;
+    }
+
+    // Handle form submit (upload)
+    document.getElementById('upload-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const formData = new FormData(e.target);
+      const fileInput = document.getElementById('file');
+      const file = fileInput.files[0];
+
+      if (!file) return alert('Please select a file.');
+
+      try {
+        const res = await fetch('/uploads', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error('Upload failed');
+
+        // Append uploaded file to list
+        const list = document.getElementById('file-list');
+        list.appendChild(createFileListItem(file.name));
+
+        fileInput.value = ''; // reset input
+      } catch (err) {
+        alert('Upload failed: ' + err.message);
+      }
+    });
+
+    // Delete file request and remove from list item
+    async function deleteFile(filename, listItem) {
+      if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
+
+      try {
+        const res = await fetch(`/uploads/${filename}`, {
+          method: 'DELETE',
+        });
+
+        if (!res.ok) throw new Error('Failed to delete file');
+
+        listItem.remove();
+        alert(`${filename} deleted.`);
+      } catch (err) {
+        alert('Error deleting file: ' + err.message);
+      }
+    }
+  </script>
 
   <script>
     let progress = 0;

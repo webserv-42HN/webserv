@@ -58,17 +58,24 @@ class Response : public Request
         
         std::string routing(std::string method, std::string url);
         std::string generatingResponse(HttpMethod method, std::string full_url);
-        std::string getGetResponse(std::string path, int statusCode);
-        std::string getPostResponse(std::string path);
-        std::string getDeleteResponse(std::string path);
+        std::string getGetResponse(const std::string& requested_path, int statusCode);
+        std::string getPostResponse(const std::string &path);
+        std::string getDeleteResponse(const std::string &path);
         std::string getErrorResponse(int statusCode);    
         
-        std::string buildResponse(std::string body, int statusCode);
+        std::string buildResponse(const std::string& body, int statusCode, const std::string& contentType);
         std::string getStatusLine(int statusCode);
         HttpMethod methodToEnum(std::string method);
         std::string generateDirectoryListing(const std::string& path);
         bool isDirectory(const std::string& path);
-        bool handleFileUpload(const std::string& path, const std::string& body, const std::string& boundary);
+
+        bool handleFileUpload(const std::string& path,
+                                        const std::string& body,
+                                        const std::string& boundary,
+                                        std::string& out_filename);
+        std::string getMimeType(const std::string& path);
+        size_t getContentLength() const;
+        std::string responseApplication(std::string body);
 };
 
 #endif
