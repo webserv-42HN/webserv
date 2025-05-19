@@ -3,18 +3,19 @@
 #include <vector>
 #include <poll.h>
 #include <unordered_map>
-#include "ConfigParser.hpp"
+// #include "ConfigParser.hpp" //to remove
+#include "config_manager.hpp"
 #include <fcntl.h>
 
 class Server {
 	private:
-		std::vector<ServerConfigs> config;
+		std::vector<ServerConfig> config;
 		std::vector<int> ss_Fds;
 		std::vector<struct pollfd> poll_fds;
 		std::vector<int> uniqPorts;
 
 	public:
-		Server(std::vector<ServerConfigs> config);
+		Server(std::vector<ServerConfig> config);
 		// ~Server();
 
 		void setupPorts(); //initial step when we go through the results of the parser,

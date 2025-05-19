@@ -10,12 +10,12 @@ struct ServerConfigs
     int sock_fd;
 };
 
-class ConfigParser {
-private:
-    std::vector<ServerConfigs> configs;
+// class ConfigParser {
+// private:
+//     std::vector<ServerConfigs> configs;
 
-public:
-    bool parse(const std::string& path);
-    const std::vector<ServerConfigs>& getConfigs() const;
-};
+// public:
+//     bool parse(const std::string& path);
+//     const std::vector<ServerConfigs>& getConfigs() const;
+// };
 
