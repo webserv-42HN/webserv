@@ -8,7 +8,7 @@
 #include <cstring>
 #include <signal.h>
 
-Server::Server(std::vector<ServerConfigs> config) : config(config) {
+Server::Server(std::vector<ServerConfig> config) : config(config) {
 	Server::setupPorts();
 }
 
@@ -128,8 +128,8 @@ void Server::cleanup () {
 }
 
 void Server::setupPorts() {
-	std::vector<ServerConfigs>::iterator it = config.begin();
-	std::vector<ServerConfigs>::iterator it_end = config.end();
+	std::vector<ServerConfig>::iterator it = config.begin();
+	std::vector<ServerConfig>::iterator it_end = config.end();
 
 	while (it != it_end) {
 		if(std::find(uniqPorts.begin(), uniqPorts.end(), it->port) == uniqPorts.end()) {

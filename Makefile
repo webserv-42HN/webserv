@@ -29,12 +29,12 @@
 
 CPP     = c++
 
-CXXFLAGS = -c -g -Wall -Werror -Wextra -std=c++11
+CXXFLAGS = -c -g -Wall -Werror -Wextra -std=c++17
 OBJDIR  = obj
 NAME    = webserv
 
-SRCS    = main.cpp ConfigParser.cpp Request.cpp Response.cpp utils.cpp Server.cpp
-HEADERS = ConfigParser.hpp Request.hpp Response.hpp utils.hpp Server.hpp
+SRCS    = main.cpp config_manager.cpp Request.cpp Response.cpp utils.cpp Server.cpp
+HEADERS = config_manager.hpp Request.hpp Response.hpp utils.hpp Server.hpp
 OBJS    = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCS))
 
 all: $(NAME)
