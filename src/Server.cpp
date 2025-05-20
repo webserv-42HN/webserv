@@ -153,78 +153,6 @@ void Server::cleanup () {
 	}
 }
 
-<<<<<<< HEAD
-void Server::setupPorts() {
-	std::vector<ServerConfig>::iterator it = config.begin();
-	std::vector<ServerConfig>::iterator it_end = config.end();
-
-	while (it != it_end) {
-		if(std::find(uniqPorts.begin(), uniqPorts.end(), it->port) == uniqPorts.end()) {
-
-			it->sock_fd = socket(AF_INET, SOCK_STREAM, 0);
-			if(it->sock_fd  < 0) {
-				std::cerr << "Failed to create socket\n";
-				exit(1);
-			}
-			int opt = 1;
-			if (setsockopt(it->sock_fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) {
-				perror("setsockopt");
-				exit(1);
-			}
-
-			if (fcntl(it->sock_fd, F_SETFL, O_NONBLOCK) < 0) {
-				perror("fctnl");
-				exit(1);
-			}
-
-			sockaddr_in addr;
-			memset(&addr, 0, sizeof(addr));
-			addr.sin_family = AF_INET;
-			addr.sin_addr.s_addr = INADDR_ANY;
-			addr.sin_port = htons(it->port);
-
-			if (bind(it->sock_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-				std::cerr << "Bind failed\n";
-				return ;
-			}
-
-			if (listen(it->sock_fd, SOMAXCONN) < 0) {
-				std::cerr << "Listen failed\n";
-				return ;
-			}
-			std::cout << "Middle Serv running on the port " << port << std::endl;
-			struct pollfd pollfd = {it->sock_fd, POLLIN, 0};
-			poll_fds.push_back(pollfd);
-			ss_Fds.push_back(it->sock_fd);
-			uniqPorts.push_back(it->port);
-			std::cout << "we pushed: "  << "sock_fd: " << it->sock_fd << ", port: " << it->port << std::endl;
-		}
-		++it;
-	}
-
-	std::cout << "=== Results of setupPorts() ===" << std::endl;
-
-// Print unique ports
-std::cout << "[Unique Ports]" << std::endl;
-for (std::vector<int>::iterator it = uniqPorts.begin(); it != uniqPorts.end(); ++it) {
-	std::cout << "Port: " << *it << std::endl;
-}
-
-// Print server socket file descriptors
-std::cout << "\n[Server Socket FDs]" << std::endl;
-for (std::vector<int>::iterator it = ss_Fds.begin(); it != ss_Fds.end(); ++it) {
-	std::cout << "Socket FD: " << *it << std::endl;
-}
-
-// Print poll file descriptors
-std::cout << "\n[Poll FDs]" << std::endl;
-for (std::vector<struct pollfd>::iterator it = poll_fds.begin(); it != poll_fds.end(); ++it) {
-	std::cout << "pollfd { fd: " << it->fd
-	          << ", events: " << it->events
-	          << ", revents: " << it->revents << " }" << std::endl;
-}
-
-=======
 void Server::setupSocket() {
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_fd == 0) {
@@ -256,7 +184,6 @@ void Server::setupSocket() {
 
 	struct pollfd pfd = {server_fd, POLLIN, 0};
 	poll_fds.push_back(pfd);
->>>>>>> server_handle_request
 }
 
 void Server::run() {
