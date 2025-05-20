@@ -13,7 +13,7 @@ Router::~Router() {
     // Destructor
 }
 
-t_routeConfig Router::getRouteConfig(std::string url) {
+t_responseRouteConfig Router::getResponseRouteConfig(std::string url) {
     // First try exact match
     auto it = routes.find(url);
     if (it != routes.end()) {
@@ -30,8 +30,8 @@ t_routeConfig Router::getRouteConfig(std::string url) {
     return NotFoundHandler();
 }
 
-t_routeConfig Router::RootHandler(std::string url) {
-    t_routeConfig config;
+t_responseRouteConfig Router::RootHandler(std::string url) {
+    t_responseRouteConfig config;
     (void)url;
     config.allowed_methods = {GET, POST, DELETE};
     config.root_dir = "./www";
@@ -40,8 +40,8 @@ t_routeConfig Router::RootHandler(std::string url) {
     return config;
 }
 
-t_routeConfig Router::AboutHandler(std::string url) {
-    t_routeConfig config;
+t_responseRouteConfig Router::AboutHandler(std::string url) {
+    t_responseRouteConfig config;
     
     (void)url;
     config.allowed_methods = {GET};
@@ -51,8 +51,8 @@ t_routeConfig Router::AboutHandler(std::string url) {
     return config;
 }
 
-t_routeConfig Router::UploadsHandler(std::string url) {
-    t_routeConfig config;
+t_responseRouteConfig Router::UploadsHandler(std::string url) {
+    t_responseRouteConfig config;
     
     (void)url;
     config.allowed_methods = {GET, POST, DELETE};
@@ -62,8 +62,8 @@ t_routeConfig Router::UploadsHandler(std::string url) {
     return config;
 }
 
-t_routeConfig Router::DocsHandler(std::string url) {
-    t_routeConfig config;
+t_responseRouteConfig Router::DocsHandler(std::string url) {
+    t_responseRouteConfig config;
     
     (void)url;
     config.allowed_methods = {GET};
@@ -73,8 +73,8 @@ t_routeConfig Router::DocsHandler(std::string url) {
     return config;
 }
 
-t_routeConfig Router::SubmitHandler(std::string url) {
-    t_routeConfig config;
+t_responseRouteConfig Router::SubmitHandler(std::string url) {
+    t_responseRouteConfig config;
     
     (void)url;
     config.allowed_methods = {GET, POST, DELETE};
@@ -84,8 +84,8 @@ t_routeConfig Router::SubmitHandler(std::string url) {
     return config;
 }
 
-t_routeConfig Router::NotFoundHandler() {
-    t_routeConfig config;
+t_responseRouteConfig Router::NotFoundHandler() {
+    t_responseRouteConfig config;
     
     config.allowed_methods = {GET};
     config.root_dir = error_dir;

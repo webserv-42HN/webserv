@@ -23,7 +23,7 @@ Response::~Response() {
 std::string Response::routing(std::string method, std::string url) {
     Router router;
     HttpMethod http_method = methodToEnum(method);
-    t_routeConfig config = router.getRouteConfig(url);
+    t_responseRouteConfig config = router.getResponseRouteConfig(url);
     std::string response;
     std::string full_path;
 

@@ -44,21 +44,21 @@ enum HttpMethod {
     UNKNOWN
 };
 
-typedef struct RouteConfig {
+typedef struct ResponseRouteConfig {
     std::vector<HttpMethod> allowed_methods;
     std::string root_dir;
     std::string redirect_to;
     bool autoindex;
-}   t_routeConfig;
+}   t_responseRouteConfig;
 
-using RouteHandler = std::function<t_routeConfig(std::string)>;
-// typedef std::function<t_routeConfig(std::string)> RouteHandler; -> C98++
+using RouteHandler = std::function<t_responseRouteConfig(std::string)>;
+// typedef std::function<t_responseRouteConfig(std::string)> RouteHandler; -> C98++
 
 class Response : public Request
 {
     protected:
         std::string error_dir = "./www/error/";
-        t_routeConfig route_config;
+        t_responseRouteConfig route_config;
         std::unordered_map<std::string, RouteHandler> routes;
 
     public:

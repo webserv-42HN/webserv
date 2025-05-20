@@ -10,13 +10,13 @@ class Router : public Response {
         Router();
         ~Router();
         
-        t_routeConfig getRouteConfig(std::string url);
-        t_routeConfig RootHandler(std::string url);
-        t_routeConfig AboutHandler(std::string url);
-        t_routeConfig DocsHandler(std::string url);
-        t_routeConfig UploadsHandler(std::string url);
-        t_routeConfig SubmitHandler(std::string url);
-        t_routeConfig NotFoundHandler();
+        t_responseRouteConfig getResponseRouteConfig(std::string url);
+        t_responseRouteConfig RootHandler(std::string url);
+        t_responseRouteConfig AboutHandler(std::string url);
+        t_responseRouteConfig DocsHandler(std::string url);
+        t_responseRouteConfig UploadsHandler(std::string url);
+        t_responseRouteConfig SubmitHandler(std::string url);
+        t_responseRouteConfig NotFoundHandler();
 };
 
 #endif
