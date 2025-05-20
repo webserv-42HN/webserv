@@ -50,7 +50,8 @@ struct RouteConfig {
 };
 
 struct ServerConfig {
-    int port = 80;
+    int port;
+    int sock_fd;
     std::vector<std::string> server_names;
     std::string error_page_404;
     size_t client_max_body_size = 1024 * 1024;
