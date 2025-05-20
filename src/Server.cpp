@@ -1,16 +1,19 @@
-#include "Server.hpp"
-#include "Request.hpp"
-#include "Response.hpp"
-#include "utils.hpp"
+#include "../includes/Server.hpp"
+#include "../includes/Request.hpp"
+#include "../includes/Response.hpp"
+#include "../includes/utils.hpp"
 #include <iostream>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <cstring>
 #include <signal.h>
+#include <cstdio>
+#include <cstdlib>
 
-Server::Server(std::vector<ServerConfig> config) : config(config) {
-	Server::setupPorts();
-}
+#define BUF_SIZE 4048
+
+// Make sure the Server class is defined before this point by including Server.hpp
+Server::Server(int p, const std::string& r) : port(p), root(r), server_fd(-1) {}
 
 bool Server::running = true;
 
@@ -30,10 +33,6 @@ void Server::mainLoop() {
 					handleClientData(poll_fds[i].fd);
 				}
 			}
-
-			if (poll_fds[i].revents & POLLOUT) {
-				handleClientWrite(poll_fds[i].fd);
-			}
 		}
 	}
 }
@@ -49,60 +48,87 @@ void Server::handleNewConnection() {
 }
 
 void Server::handleClientData(int client_fd) {
-	char buffer[1024] = {0};
-	ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-	if (bytes_read <= 0) {
-		closeClient(client_fd);
-		return ;
-	}
-	std::cout << "Received request from client :\n" << buffer << std::endl;
+    char buf[BUF_SIZE];
+    std::string request;
+    ssize_t nread;
+    Response res;
 
-	Request req = Request::parse(buffer);
-	std::string path = root + (req.path == "/" ? "/index.html" : req.path);
-	std::string body = read_file(path);
-	std::string response;
+    // Step 1: Read headers
+    while (true) {
+        nread = recv(client_fd, buf, BUF_SIZE - 1, 0);
+        if (nread <= 0) {
+            closeClient(client_fd);
+            return;
+        }
+        request.append(buf, nread);
+        if (request.find("\r\n\r\n") != std::string::npos) break;
+    }
 
-	if (req.method != "GET") {
-		response = Response::build("<h1>405 Method Not Allowed</h1>", "text/html", 405, "Method Not Allowed");
-	} else if (body.empty()) {
-		body = read_file(root + "/404.html");
-		response = Response::build(body, "text/html", 404, "Not Found");
-	} else {
-		response = Response::build(body);
-	}
+    // Step 2: Parse headers
+    size_t header_end = request.find("\r\n\r\n");
+    if (header_end == std::string::npos) {
+        std::string errorResp = res.getErrorResponse(400);
+        send(client_fd, errorResp.c_str(), errorResp.length(), 0);
+        closeClient(client_fd);
+        return;
+    }
 
-	responses[client_fd] = response;
+    header_end += 4; // Skip past the headers
+    res.parseRequest(request);
 
-	for (auto& pfd : poll_fds) {
-		if (pfd.fd == client_fd) {
-			pfd.events = POLLOUT;
-			pfd.revents = 0;
+    // Step 3: Read body if needed
+    int contentLength = res.getContentLength();
+    int bodyReceived = request.size() - header_end;
+    while (bodyReceived < contentLength) {
+        nread = recv(client_fd, buf, BUF_SIZE - 1, 0);
+        if (nread <= 0) break;
+        request.append(buf, nread);
+        bodyReceived += nread;
+    }
 
-			break;
-		}
-	}
+    // Step 4: Handle request
+    std::string response;
+    if (res.isMalformedRequest(request)) {
+        response = res.getErrorResponse(400);
+    } else {
+        const std::string& method = res.getRequestLine().method;
+        const std::string& url = res.getRequestLine().url;
+        response = res.routing(method, url);
+    }
+
+    // Step 5: Send response and close
+    send(client_fd, response.c_str(), response.length(), 0);
+    closeClient(client_fd);
 }
 
-void Server::handleClientWrite(int client_fd) {
-	auto it = responses.find(client_fd);
-	if (it == responses.end()) {
-		std::cerr << "No response found for client " << client_fd << std::endl;
-		closeClient(client_fd);
-		return ;
-	}
-	const std::string& response = it->second;
-	ssize_t bytes_sent = send(client_fd, response.c_str(), response.length(), 0);
-	if (bytes_sent <= 0) {
-		perror("send");
-		closeClient(client_fd);
-		responses.erase(client_fd);
-		return ;
-	}
-	std::cout << "Sent response to client :\n" << response << std::endl;
 
-	responses.erase(client_fd);
-	closeClient(client_fd);
-}
+// void Server::handleClientData(int client_fd) {
+// 	char buffer[1024] = {0};
+// 	ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+// 	if (bytes_read <= 0) {
+// 		closeClient(client_fd);
+// 		return ;
+// 	}
+// 	std::cout << "Received request from client :\n" << buffer << std::endl;
+
+// 	Request req = Request::parse(buffer);
+// 	std::string path = root + (req.path == "/" ? "/index.html" : req.path);
+// 	std::string body = read_file(path);
+// 	std::string response;
+
+// 	if (req.method != "GET") {
+// 		response = Response::build("<h1>405 Method Not Allowed</h1>", "text/html", 405, "Method Not Allowed");
+// 	} else if (body.empty()) {
+// 		body = read_file(root + "/404.html");
+// 		response = Response::build(body, "text/html", 404, "Not Found");
+// 	} else {
+// 		response = Response::build(body);
+// 	}
+
+// 	send(client_fd, response.c_str(), response.length(), 0);
+
+// 	closeClient(client_fd);
+// }
 
 void Server::closeClient(int client_fd){
 	close (client_fd);
@@ -127,6 +153,7 @@ void Server::cleanup () {
 	}
 }
 
+<<<<<<< HEAD
 void Server::setupPorts() {
 	std::vector<ServerConfig>::iterator it = config.begin();
 	std::vector<ServerConfig>::iterator it_end = config.end();
@@ -197,13 +224,46 @@ for (std::vector<struct pollfd>::iterator it = poll_fds.begin(); it != poll_fds.
 	          << ", revents: " << it->revents << " }" << std::endl;
 }
 
+=======
+void Server::setupSocket() {
+	server_fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (server_fd == 0) {
+		std::cerr << "Failed to create socket\n";
+		exit(1);
+	}
+
+	int opt = 1;
+	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) {
+		perror("setsockopt");
+		exit(1);
+	}
+
+	sockaddr_in addr;
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	addr.sin_port = htons(port);
+
+	if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+		std::cerr << "Bind failed\n";
+		return ;
+	}
+
+	if (listen(server_fd, 10) < 0) {
+		std::cerr << "Listen failed\n";
+		return ;
+	}
+	std::cout << "Mini Serv running on the port " << port << std::endl;
+
+	struct pollfd pfd = {server_fd, POLLIN, 0};
+	poll_fds.push_back(pfd);
+>>>>>>> server_handle_request
 }
 
 void Server::run() {
 	signal(SIGINT, signalHandler);
 	signal(SIGTERM, signalHandler);
 
-	setupPorts();
+	setupSocket();
 	mainLoop();
 	cleanup();
 }
