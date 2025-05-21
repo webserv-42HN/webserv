@@ -10,7 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-#define BUF_SIZE 4048
+#define BUF_SIZE 8194
 
 // Make sure the Server class is defined before this point by including Server.hpp
 Server::Server(int p, const std::string& r) : port(p), root(r), server_fd(-1) {}
@@ -51,9 +51,11 @@ void Server::handleClientData(int client_fd) {
     char buf[BUF_SIZE];
     std::string request;
     ssize_t nread;
-    Response res;
+    size_t header_end = std::string::npos;
+    int contentLength = 0;
+	Response res;
+    std::string response;
 
-    // Step 1: Read headers
     while (true) {
         nread = recv(client_fd, buf, BUF_SIZE - 1, 0);
         if (nread <= 0) {
@@ -61,74 +63,27 @@ void Server::handleClientData(int client_fd) {
             return;
         }
         request.append(buf, nread);
-        if (request.find("\r\n\r\n") != std::string::npos) break;
+        if (header_end == std::string::npos) {
+            header_end = request.find("\r\n\r\n");
+            if (header_end != std::string::npos) {
+                header_end += 4;
+                std::string headers = request.substr(0, header_end);
+                contentLength = res.getContentLength(headers);
+            }
+        }
+        // If headers found and body fully received
+        if (header_end != std::string::npos && request.size() >= header_end + contentLength)
+            break;
     }
-
-    // Step 2: Parse headers
-    size_t header_end = request.find("\r\n\r\n");
-    if (header_end == std::string::npos) {
-        std::string errorResp = res.getErrorResponse(400);
-        send(client_fd, errorResp.c_str(), errorResp.length(), 0);
-        closeClient(client_fd);
-        return;
-    }
-
-    header_end += 4; // Skip past the headers
-    res.parseRequest(request);
-
-    // Step 3: Read body if needed
-    int contentLength = res.getContentLength();
-    int bodyReceived = request.size() - header_end;
-    while (bodyReceived < contentLength) {
-        nread = recv(client_fd, buf, BUF_SIZE - 1, 0);
-        if (nread <= 0) break;
-        request.append(buf, nread);
-        bodyReceived += nread;
-    }
-
-    // Step 4: Handle request
-    std::string response;
     if (res.isMalformedRequest(request)) {
         response = res.getErrorResponse(400);
     } else {
-        const std::string& method = res.getRequestLine().method;
-        const std::string& url = res.getRequestLine().url;
-        response = res.routing(method, url);
+        res.parseRequest(request);
+        response = res.routing(res.getRequestLine().method, res.getRequestLine().url);
     }
-
-    // Step 5: Send response and close
-    send(client_fd, response.c_str(), response.length(), 0);
+    send(client_fd, response.c_str(), response.size(), 0);
     closeClient(client_fd);
 }
-
-
-// void Server::handleClientData(int client_fd) {
-// 	char buffer[1024] = {0};
-// 	ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-// 	if (bytes_read <= 0) {
-// 		closeClient(client_fd);
-// 		return ;
-// 	}
-// 	std::cout << "Received request from client :\n" << buffer << std::endl;
-
-// 	Request req = Request::parse(buffer);
-// 	std::string path = root + (req.path == "/" ? "/index.html" : req.path);
-// 	std::string body = read_file(path);
-// 	std::string response;
-
-// 	if (req.method != "GET") {
-// 		response = Response::build("<h1>405 Method Not Allowed</h1>", "text/html", 405, "Method Not Allowed");
-// 	} else if (body.empty()) {
-// 		body = read_file(root + "/404.html");
-// 		response = Response::build(body, "text/html", 404, "Not Found");
-// 	} else {
-// 		response = Response::build(body);
-// 	}
-
-// 	send(client_fd, response.c_str(), response.length(), 0);
-
-// 	closeClient(client_fd);
-// }
 
 void Server::closeClient(int client_fd){
 	close (client_fd);

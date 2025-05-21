@@ -47,10 +47,14 @@ std::string Response::generateDirectoryListing(const std::string& path) {
     return buildResponse(content, 200, content_type);
 }
 
-size_t Response::getContentLength() const {
-    for (std::vector<std::pair<std::string, std::string> >::const_iterator it = headers.begin(); it != headers.end(); ++it) {
-        if (it->first == "Content-Length")
-            return std::stoul(it->second);
+size_t Response::getContentLength(const std::string &headers) const {
+    size_t contentLength = 0;
+    size_t pos = headers.find("Content-Length:");
+    if (pos != std::string::npos) {
+        size_t start = headers.find_first_of("0123456789", pos);
+        size_t end = headers.find("\r\n", start);
+        contentLength = std::atoi(headers.substr(start, end - start).c_str());
+        return contentLength;
     }
     return 0;
 }

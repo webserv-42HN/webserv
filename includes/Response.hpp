@@ -83,7 +83,8 @@ class Response : public Request
                                         const std::string& boundary,
                                         std::string& out_filename);
         std::string getMimeType(const std::string& path);
-        size_t getContentLength() const;
+        // size_t getContentLength() const;
+        size_t getContentLength(const std::string &headers) const;
         std::string responseApplication(std::string body);
 };
 
