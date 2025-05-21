@@ -22,52 +22,33 @@ Response::~Response() {
 
 std::string Response::routing(std::string method, std::string url) {
     Router router;
-    HttpMethod http_method = methodToEnum(method);
-    t_routeConfig config = router.getRouteConfig(url);
     std::string response;
     std::string full_path;
+    HttpMethod http_method = methodToEnum(method);
+    t_routeConfig config = router.getRouteConfig(url);
 
-    // Handle redirects first
     if (!config.redirect_to.empty()) {
         response = "HTTP/1.1 301 Moved Permanently\r\n";
         response += "Location: " + config.redirect_to + "\r\n\r\n";
         return response;
     }
-    // Check if method is allowed
-    std::cout << "[DEBUG] Method: " << method << std::endl;
     auto it = std::find(config.allowed_methods.begin(),
                         config.allowed_methods.end(),
                         http_method);
     if (it == config.allowed_methods.end())
-    {
-        std::cout << "[DEBUG] Method not allowed:" << method << std::endl;
         return getErrorResponse(405);
-    }
-
-    if (http_method == POST) {
-        if (url == "/submit" || url == "/uploads")
-            return getPostResponse(url);
-        return getErrorResponse(404); // Not found for other POST paths
-    }
-    if (url.find("/uploads") == 0)
-        full_path = "./www" + url;
-    else
-        full_path = config.root_dir + url;
-    struct stat path_stat;
-    if (stat(full_path.c_str(), &path_stat) != 0)
-        return getErrorResponse(404);
-    if (isDirectory(full_path)) {
-        std::string index_path = full_path + "/index.html";
+    full_path = config.root_dir + url;
+    if (isDirectory(full_path) && method == "GET") {
+        std::string index_path = "./www" + url + "/index.html";
         std::ifstream index_file(index_path);
         if (index_file.good()) {
             index_file.close();
             return getGetResponse(index_path, 200);
         }
-        if (config.autoindex) {
+        if (config.autoindex)
             return generateDirectoryListing(full_path);
-        }
         return getErrorResponse(403);
-    } 
+    }
     return generatingResponse(http_method, full_path);
 }
 
@@ -106,7 +87,6 @@ std::string Response::getGetResponse(const std::string& requested_path, int stat
         file.close();
         return getErrorResponse(500); // Read error
     }
-
     file.close();
     return buildResponse(body, statusCode, getMimeType(requested_path));
 }
@@ -115,18 +95,18 @@ std::string Response::getPostResponse(const std::string& url) {
     std::string resBody;
     std::string uploadedFile;
 
+    std::cout << "TEST TEST TEST" << std::endl;
     if (content_type.empty())
         return getErrorResponse(400); // Bad Request - No Content-Type
     // Handle URL-encoded form submission (e.g., /submit)
     if (content_type == "application/x-www-form-urlencoded") {
         if (body.empty())
             return getErrorResponse(400);
-        if (url == "/submit") {
+        if (url == "./www/submit") {
             resBody = responseApplication(body);
             return buildResponse(resBody, 200, content_type);
-        } else {
+        } else
             return getErrorResponse(404); // Not found for this path
-        }
     }
     // Handle file uploads (e.g., /uploads)
     if (content_type.find("multipart/form-data") != std::string::npos) {
@@ -137,26 +117,23 @@ std::string Response::getPostResponse(const std::string& url) {
             return getErrorResponse(400);
         std::string boundary = "--" + content_type.substr(boundary_pos + 9);
         std::string upload_path = "./www/uploads/";
+        std::cout << "Upload path: " << upload_path << std::endl;
         struct stat st;
         if (stat(upload_path.c_str(), &st) == -1) {
             if (mkdir(upload_path.c_str(), 0755) == -1)
                 return getErrorResponse(500);
         }
         bool success = handleFileUpload(upload_path, body, boundary, uploadedFile);
-        std::cout << "[DEBUG] handleFileUpload result: " << (success ? "SUCCESS" : "FAILURE") << std::endl;
-        if (success) {   
-            // generateUploadsIndex(upload_path);
+        if (success) 
             return buildResponse(resBody, 200, content_type);
-        } else {
+        else
             return getErrorResponse(500); // Upload failed
-        }
     }
     return getErrorResponse(415); // Unsupported content-type
 }
 
 std::string Response::getDeleteResponse(const std::string& filepath) {
     struct stat st;
-    std::cout << "[DEBUG] Deleting file: " << filepath << std::endl;
     if (stat(filepath.c_str(), &st) != 0) {
         return getErrorResponse(404); // Not found
     }

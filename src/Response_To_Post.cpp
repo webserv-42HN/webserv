@@ -5,10 +5,10 @@ bool Response::handleFileUpload(const std::string& path, const std::string& body
     size_t boundary_len = boundary.length();
     bool fileSaved = false;
 
+    std::cout << "TEST TEST TEST" << std::endl;
     while ((pos = body.find(boundary, pos)) != std::string::npos)
     {
         pos += boundary_len;
-        // Skip optional \r\n
         if (body.substr(pos, 2) == "\r\n")
             pos += 2;
         size_t headers_end = body.find("\r\n\r\n", pos);
@@ -26,11 +26,11 @@ bool Response::handleFileUpload(const std::string& path, const std::string& body
         size_t file_end = body.find(boundary, pos);
         if (file_end == std::string::npos) break;
         std::string file_content = body.substr(pos, file_end - pos);
-
         // Strip possible trailing \r\n
         if (file_content.size() >= 2 && file_content.substr(file_content.size() - 2) == "\r\n")
             file_content = file_content.substr(0, file_content.size() - 2);
         std::string full_path = path + "/" + filename;
+        std::cout << "Saving file: " << full_path << std::endl;
         std::ofstream outfile(full_path, std::ios::binary);
         if (!outfile) {
             std::cerr << "[ERROR] Cannot write to: " << full_path << std::endl;

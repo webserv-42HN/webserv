@@ -114,7 +114,6 @@ void Server::setupSocket() {
 		std::cerr << "Failed to create socket\n";
 		exit(1);
 	}
-
 	int opt = 1;
 	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) {
 		perror("setsockopt");
