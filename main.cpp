@@ -2,6 +2,10 @@
 #include "Server.hpp"
 #include <iostream>
 
+// int main () {
+
+// }
+
 int main() {
 	ConfigParser parser;
 	if (parser.parse("config.conf")) {

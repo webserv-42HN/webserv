@@ -46,60 +46,60 @@ void Server::incoming(int fd) {
 
 }
 
-void Server::mainLoop() {
-	if(config.size() < 1)
-		return ;
-
-	signal(SIGPIPE, SIG_IGN);
-	signal(SIGINT, stopLoop);
-
-	while (gSignal) {
-		if (poll(&poll_fds[0], poll_fds.size(), 0) == -1 && gSignal == 1) {
-			perror("poll");
-		}
-
-		for (size_t i = 0; i < poll_fds.size(); i++) {
-			if(poll_fds[i].revents & POLLIN) {
-				incoming(poll_fds[i].fd);
-			}
-			else
-				handleClientWrite(poll_fds[i].fd);
-		}
-	}
-}
-
 // void Server::mainLoop() {
-// 	std::cout << "DEBUG: main LOOp" << std::endl;
-// 	while (running) {
-// 		int poll_count = poll(poll_fds.data(), poll_fds.size(), 1000);
-// 		if (poll_count < 0) {
+// 	if(config.size() < 1)
+// 		return ;
+
+// 	signal(SIGPIPE, SIG_IGN);
+// 	signal(SIGINT, stopLoop);
+
+// 	while (gSignal) {
+// 		if (poll(&poll_fds[0], poll_fds.size(), 0) == -1 && gSignal == 1) {
 // 			perror("poll");
-// 			break;
 // 		}
-// 		//debug poll_count
-// 		std::cout << "poll_count = " << poll_count << std::endl;
-// 		for (size_t i = 0; i < poll_fds.size(); i++) {
-// 			std::cout << "fd: " << poll_fds[i].fd << " revents: " << poll_fds[i].revents << std::endl;
-// 		}
-// 		//debug poll_count
-
 
 // 		for (size_t i = 0; i < poll_fds.size(); i++) {
-// 			std::cout << "DEBUG: i is: " << i << std::endl;
-// 			if (poll_fds[i].revents & POLLIN) {
-// 				if (std::find(ss_Fds.begin(), ss_Fds.end(), poll_fds[i].fd) != ss_Fds.end()) {
-// 					handleNewConnection(poll_fds[i].fd);
-// 				} else {
-// 					handleClientData(poll_fds[i].fd);
-// 				}
+// 			if(poll_fds[i].revents & POLLIN) {
+// 				incoming(poll_fds[i].fd);
 // 			}
-
-// 			if (poll_fds[i].revents & POLLOUT) {
+// 			else
 // 				handleClientWrite(poll_fds[i].fd);
-// 			}
 // 		}
 // 	}
 // }
+
+void Server::mainLoop() {
+	std::cout << "DEBUG: main LOOp" << std::endl;
+	while (running) {
+		int poll_count = poll(poll_fds.data(), poll_fds.size(), 1000);
+		if (poll_count < 0) {
+			perror("poll");
+			break;
+		}
+		//debug poll_count
+		std::cout << "poll_count = " << poll_count << std::endl;
+		for (size_t i = 0; i < poll_fds.size(); i++) {
+			std::cout << "fd: " << poll_fds[i].fd << " revents: " << poll_fds[i].revents << std::endl;
+		}
+		//debug poll_count
+
+
+		for (size_t i = 0; i < poll_fds.size(); i++) {
+			std::cout << "DEBUG: i is: " << i << std::endl;
+			if (poll_fds[i].revents & POLLIN) {
+				if (std::find(ss_Fds.begin(), ss_Fds.end(), poll_fds[i].fd) != ss_Fds.end()) {
+					handleNewConnection(poll_fds[i].fd);
+				} else {
+					handleClientData(poll_fds[i].fd);
+				}
+			}
+
+			if (poll_fds[i].revents & POLLOUT) {
+				handleClientWrite(poll_fds[i].fd);
+			}
+		}
+	}
+}
 
 
 void Server::handleNewConnection(int listen_id) {
