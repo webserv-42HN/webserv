@@ -7,6 +7,12 @@
 #include "ConfigParser.hpp"
 #include <fcntl.h>
 
+struct ClientSession {
+	std::string buffer;
+	bool headers_received = false;
+	int content_length = 0;
+};
+
 class Server {
 	private:
 		std::vector<ServerConfigs> config;
@@ -15,6 +21,7 @@ class Server {
 		std::map<int, ServerConfigs> clientConfigs;
 		std::vector<struct pollfd> poll_fds;
 		std::vector<int> uniqPorts;
+		std::map<int, ClientSession> client_sessions;
 
 	public:
 		Server(std::vector<ServerConfigs> config);

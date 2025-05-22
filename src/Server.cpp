@@ -38,8 +38,6 @@ void stopLoop(int) {
 	gSignal = 0;
 }
 
-
-
 void Server::mainLoop() {
 	// std::cout << "DEBUG: main LOOp" << std::endl;
 	while (running) {
@@ -83,70 +81,51 @@ void Server::handleNewConnection(int listen_id) {
 void Server::handleClientData(int client_fd) {
 	std::cout << "DEBUG: handleClientData" << std::endl;
 	char buf[BUF_SIZE];
-	std::string request;
-    ssize_t nread;
-    size_t header_end = std::string::npos;
-    int contentLength = 0;
-	Response res;
-    std::string response;
+	ssize_t nread = recv(client_fd, buf, BUF_SIZE - 1, 0);
+	if (nread <= 0) {
+		closeClient(client_fd);
+		return;
+	}
 
-	while (true) {
-        nread = recv(client_fd, buf, BUF_SIZE - 1, 0);
-        if (nread <= 0) {
-            closeClient(client_fd);
-            return;
-        }
-        request.append(buf, nread);
-        if (header_end == std::string::npos) {
-            header_end = request.find("\r\n\r\n");
-            if (header_end != std::string::npos) {
-                header_end += 4;
-                std::string headers = request.substr(0, header_end);
-                contentLength = res.getContentLength(headers);
-            }
-        }
-        // If headers found and body fully received
-        if (header_end != std::string::npos && request.size() >= header_end + contentLength)
-            break;
-    }
+	ClientSession& session = client_sessions[client_fd];
+	session.buffer.append(buf, nread);
 
-	if (res.isMalformedRequest(request)) {
-        response = res.getErrorResponse(400);
-    } else {
-        res.parseRequest(request);
-        response = res.routing(res.getRequestLine().method, res.getRequestLine().url);
-    }
+	size_t header_end = session.buffer.find("\r\n\r\n");
+	if (!session.headers_received && header_end != std::string::npos) {
+		session.headers_received = true;
+		header_end += 4;
+		std::string headers = session.buffer.substr(0, header_end);
+		Response res;
+		session.content_length = res.getContentLength(headers);
+	}
 
+	// If full request (headers + body) received
+	if (session.headers_received && session.buffer.size() >= header_end + session.content_length) {
+		Response res;
+		std::string full_request = session.buffer;
 
-	// std::cout << "Received request from client :\n" << buffer << std::endl;
+		std::string response;
+		if (res.isMalformedRequest(full_request)) {
+			response = res.getErrorResponse(400);
+		} else {
+			res.parseRequest(full_request);
+			response = res.routing(res.getRequestLine().method, res.getRequestLine().url);
+		}
 
-	// Request req = Request::parse(buffer);
+		responses[client_fd] = response;
+		client_sessions.erase(client_fd); // Clear session
 
-	// ServerConfigs cfg = clientConfigs[client_fd];
-	// std::string root = cfg.root;
-	// std::string path = root + (req.path == "/" ? "/index.html" : req.path);
-	// std::string body = read_file(path);
-	// std::string response;
-
-	// if (req.method != "GET") {
-	// 	response = Response::build("<h1>405 Method Not Allowed</h1>", "text/html", 405, "Method Not Allowed");
-	// } else if (body.empty()) {
-	// 	body = read_file(root + "/404.html");
-	// 	response = Response::build(body, "text/html", 404, "Not Found");
-	// } else {
-	// 	response = Response::build(body);
-	// }
-
-	responses[client_fd] = response;
-
-	for (auto& pfd : poll_fds) {
-		if (pfd.fd == client_fd) {
-			pfd.events = POLLOUT;
-			pfd.revents = 0;
-			break;
+		// Enable writing
+		for (auto& pfd : poll_fds) {
+			if (pfd.fd == client_fd) {
+				pfd.events = POLLOUT;
+				pfd.revents = 0;
+				break;
+			}
 		}
 	}
 }
+
 
 void Server::handleClientWrite(int client_fd) {
 	std::cout << "DEBUG: handleClientWrite" << std::endl;
@@ -164,7 +143,7 @@ void Server::handleClientWrite(int client_fd) {
 		responses.erase(client_fd);
 		return ;
 	}
-	std::cout << "Sent response to client :\n" << response << std::endl;
+	// std::cout << "Sent response to client :\n" << response << std::endl;
 
 	responses.erase(client_fd);
 	closeClient(client_fd);

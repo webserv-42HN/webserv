@@ -19,6 +19,8 @@ std::string Response::routing(std::string method, std::string url) {
     HttpMethod http_method = methodToEnum(method);
     t_routeConfig config = router.getRouteConfig(url);
 
+    std::cout << "TEST TEST TEST TEST" << std::endl;
+
     if (!config.redirect_to.empty()) {
         response = "HTTP/1.1 301 Moved Permanently\r\n";
         response += "Location: " + config.redirect_to + "\r\n\r\n";
