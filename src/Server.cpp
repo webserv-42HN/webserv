@@ -21,6 +21,9 @@ void Server::mainLoop() {
 	while (running) {
 		int poll_count = poll(poll_fds.data(), poll_fds.size(), 1000);
 		if (poll_count < 0) {
+			if (errno == EINTR) {
+				continue;  // Interrupted by signal, check running flag again
+			}
 			perror("poll");
 			break;
 		}
@@ -151,6 +154,5 @@ void Server::run() {
 
 void Server::signalHandler(int signum) {
 	(void)signum;
-	std::cout << "Shuttimg down the server..." << std::endl;
-	running = false;
+	Server::running = false;
 }
