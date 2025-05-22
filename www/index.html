@@ -1,64 +1,368 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Welcome to Mini Serv!</title>
-	<style>
-		body {
-			font-family: 'Segoe UI', sans-serif;
-			text-align: center;
-			padding: 55px;
-			background-color: #f9f9f9;
-		}
-		h1 {
-			color: #333;
-			margin-bottom: 30px;
-		}
-		.progress-container {
-			width: 80%;
-			max-width: 400px;
-			margin: 0 auto;
-			background-color: #eee;
-			border: 9px solid #f3f3f3;
-			border-radius: 20px;
-			overflow: hidden;
-			box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-		}
-		.progress-bar {
-			width: 0%;
-			height: 20px;
-			background-color: #3498db;
-			transition: width 0.3s ease-in-out;
-		}
-		.message {
-			margin-top: 20px;
-			font-size: 1.2em;
-			color: #666;
-		}
-	</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Mini Serv!</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      background-color: #f9f9f9;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .progress-container {
+      width: 80%;
+      max-width: 400px;
+      margin-bottom: 40px;
+      background-color: #eee;
+      border: 9px solid #f3f3f3;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 20px;
+      background-color: #3498db;
+      transition: width 0.3s ease-in-out;
+    }
+
+    .message {
+      margin-top: 30px;  /* Increased margin to make the distance bigger */
+      font-size: 1.2em;
+      color: #666;
+    }
+
+    /* New container for forms side by side */
+    .forms-container {
+      display: flex;
+      gap: 20px; /* changed to 20px space between columns */
+      width: 80%;
+      max-width: 900px;
+      margin: 0 auto 60px auto;
+      justify-content: center;
+      align-items: flex-start;
+      flex-wrap: wrap; /* stack on small screens */
+    }
+
+    #submit-form,
+    .upload-section {
+      flex: 1 1 45%; /* roughly half width but flexible */
+      min-width: 300px; /* ensures good readability on small screens */
+      box-sizing: border-box;
+    }
+
+    /* Style the submit form container */
+    #submit-form {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      text-align: left;
+    }
+
+    /* Style labels and inputs inside submit form */
+    #submit-form label {
+      display: block;
+      margin-top: 1rem;
+      font-weight: 600;
+    }
+
+    #submit-form input[type="text"] {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.25rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+
+    #submit-form button {
+      margin-top: 1.5rem;
+      background: #4b80b4;
+      color: white;
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      width: 100%;
+    }
+
+    #submit-form button:hover {
+      background: #3a6390;
+    }
+
+    /* Upload section container */
+    .upload-section {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      text-align: left;
+    }
+
+    .upload-box {
+      background: white;
+      padding: 1rem 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .upload-box h2 {
+      margin-top: 0;
+    }
+
+    .form-control {
+      margin-bottom: 1rem;
+    }
+
+    input[type="file"] {
+      display: block;
+      width: 100%;
+    }
+
+    .upload-box button {
+      background: #4b80b4;
+      color: white;
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      width: 100%;
+    }
+
+    .upload-box button:hover {
+      background: #3a6390;
+    }
+
+    #uploaded-files {
+      background: white;
+      padding: 1rem 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    #uploaded-files h3 {
+      margin-top: 0;
+    }
+
+    #file-list {
+      list-style-type: none;
+      padding-left: 0;
+    }
+
+    #file-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.3rem 0;
+      border-bottom: 1px solid #ddd;
+    }
+
+    #file-list a {
+      text-decoration: none;
+      color: #3498db;
+      flex-grow: 1;
+    }
+
+    #file-list button {
+      background: #e74c3c;
+      border: none;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    #file-list button:hover {
+      background: #c0392b;
+    }
+  </style>
 </head>
 
 <body>
-	<h1>Mini Serv is starting...</h1>
-	<div class="progress-container">
-		<div class="progress-bar" id="progress-bar"></div>
-	</div>
-	<div class="message" id="message">Loading...</div>
+  <h1>Mini Serv is starting...</h1>
+  
+  <!-- Progress Bar -->
+  <div class="progress-container">
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+  <div class="message" id="message">Loading...</div>
 
-	<script>
-		let progress = 0;
-		const bar = document.getElementById('progress-bar');
-		const msg = document.getElementById('message');
+  <!-- Forms Container: Submit form + Upload section side by side -->
+  <div class="forms-container">
+    <!-- Submit Text Form -->
+    <form id="submit-form">
+      <label for="name">Your Name:</label>
+      <input type="text" id="name" name="name" required />
+      
+      <label for="age">Your Age:</label>
+      <input type="text" id="age" name="age" required />
+      
+      <button type="submit">Send</button>
+    </form>
 
-		const interval = setInterval(() => {
-			progress += 10;
-			bar.style.width = progress + '%';
-			if (progress >= 100) {
-				clearInterval(interval);
-				msg.textContent = "Mini serv is Ready";
-			}
-		}, 300);
-	</script>
+    <!-- Upload Section -->
+    <div class="upload-section">
+      <div class="upload-box">
+        <h2>Upload a File</h2>
+        <form id="upload-form" enctype="multipart/form-data">
+          <div class="form-control">
+            <input type="file" id="file" name="file" required />
+          </div>
+          <button type="submit">Upload</button>
+        </form>
+      </div>
+
+      <div id="uploaded-files">
+        <h3>Uploaded Files</h3>
+        <ul id="file-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <div id="server-response" style="margin-top: 20px;"></div>
+
+  <script>
+    // Submit form handler
+    document.getElementById('submit-form').addEventListener('submit', async function (e) {
+      e.preventDefault(); // Prevent page reload
+
+      const form = e.target;
+      const formData = new FormData(form);
+      const data = new URLSearchParams(formData).toString();
+      const response = await fetch('/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: data
+      });
+      const html = await response.text();
+      document.getElementById('server-response').innerHTML = html;
+    });
+
+    // Create file list item with delete button
+    function createFileListItem(filename) {
+      const li = document.createElement('li');
+
+      const link = document.createElement('a');
+      link.href = `/uploads/${filename}`;
+      link.target = '_blank';
+      link.textContent = filename;
+
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'Delete';
+      delBtn.onclick = () => deleteFile(filename, li);
+
+      li.appendChild(link);
+      li.appendChild(delBtn);
+
+      return li;
+    }
+
+    // Upload form handler
+    document.getElementById('upload-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const formData = new FormData(e.target);
+      const fileInput = document.getElementById('file');
+      const file = fileInput.files[0];
+
+      if (!file) return alert('Please select a file.');
+
+      try {
+        const res = await fetch('/uploads', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error('Upload failed');
+
+        // Append uploaded file to list
+        const list = document.getElementById('file-list');
+        list.appendChild(createFileListItem(file.name));
+        fileInput.value = ''; // reset input
+      } catch (err) {
+        alert('Upload failed: ' + err.message);
+      }
+    });
+
+    // Delete file request
+    async function deleteFile(filename, listItem) {
+      if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
+
+      try {
+        const res = await fetch(`/uploads/${filename}`, {
+          method: 'DELETE',
+        });
+
+        if (!res.ok) throw new Error('Failed to delete file');
+
+        listItem.remove();
+        alert(`${filename} deleted.`);
+      } catch (err) {
+        alert('Error deleting file: ' + err.message);
+      }
+    }
+  </script>
+
+  <script>
+    // Progress bar and About button logic
+    let progress = 0;
+    const bar = document.getElementById('progress-bar');
+    const msg = document.getElementById('message');
+
+    const interval = setInterval(() => {
+      progress += 10;
+      bar.style.width = progress + '%';
+
+      if (progress >= 100) {
+        clearInterval(interval);
+        // Clear message text
+        msg.textContent = "";
+
+        // Create About button
+        const aboutBtn = document.createElement('button');
+        aboutBtn.textContent = "About Mini Serv";
+        aboutBtn.className = "about-button";
+        aboutBtn.style.marginTop = "30px";
+        aboutBtn.style.marginBottom = "30px";
+        aboutBtn.style.padding = "10px 20px";
+        aboutBtn.style.fontSize = "1em";
+        aboutBtn.style.border = "none";
+        aboutBtn.style.backgroundColor = "#3498db";
+        aboutBtn.style.color = "white";
+        aboutBtn.style.borderRadius = "5px";
+        aboutBtn.style.cursor = "pointer";
+        aboutBtn.style.transition = "background-color 0.3s";
+
+        aboutBtn.onmouseover = () => (aboutBtn.style.backgroundColor = "#2980b9");
+        aboutBtn.onmouseout = () => (aboutBtn.style.backgroundColor = "#3498db");
+
+        aboutBtn.onclick = () => location.href = '/about';
+
+        msg.appendChild(aboutBtn);
+      }
+    }, 300);
+  </script>
+
 </body>
 </html>

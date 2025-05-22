@@ -28,7 +28,6 @@ class Server {
 		static void signalHandler(int signum);
 
 		void mainLoop();
-		void incoming(int fd);
 		void cleanup();
 
 		void handleNewConnection(int listen_id);

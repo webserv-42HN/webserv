@@ -1,12 +1,16 @@
-#include "Server.hpp"
-#include "Request.hpp"
-#include "Response.hpp"
-#include "utils.hpp"
+#include "../includes/Server.hpp"
+#include "../includes/Request.hpp"
+#include "../includes/Response.hpp"
+#include "../includes/utils.hpp"
 #include <iostream>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <cstring>
 #include <signal.h>
+#include <cstdio>
+#include <cstdlib>
+
+#define BUF_SIZE 8194
 
 volatile sig_atomic_t gSignal = 1;
 
@@ -34,58 +38,20 @@ void stopLoop(int) {
 	gSignal = 0;
 }
 
-void Server::incoming(int fd) {
-	std::cout << "DEBUG: determining what diz POLLIN is about" << std::endl;
-	if (std::find(ss_Fds.begin(), ss_Fds.end(), fd) != ss_Fds.end())
-	{
-		std::cout << "we got new connection!" << std::endl;
-	}
-	else {
-		std::cout << "we got a request!" << std::endl;
-	}
 
-}
-
-// void Server::mainLoop() {
-// 	if(config.size() < 1)
-// 		return ;
-
-// 	signal(SIGPIPE, SIG_IGN);
-// 	signal(SIGINT, stopLoop);
-
-// 	while (gSignal) {
-// 		if (poll(&poll_fds[0], poll_fds.size(), 0) == -1 && gSignal == 1) {
-// 			perror("poll");
-// 		}
-
-// 		for (size_t i = 0; i < poll_fds.size(); i++) {
-// 			if(poll_fds[i].revents & POLLIN) {
-// 				incoming(poll_fds[i].fd);
-// 			}
-// 			else
-// 				handleClientWrite(poll_fds[i].fd);
-// 		}
-// 	}
-// }
 
 void Server::mainLoop() {
-	std::cout << "DEBUG: main LOOp" << std::endl;
+	// std::cout << "DEBUG: main LOOp" << std::endl;
 	while (running) {
 		int poll_count = poll(poll_fds.data(), poll_fds.size(), 1000);
 		if (poll_count < 0) {
+			if (errno == EINTR)
+				continue;
 			perror("poll");
 			break;
 		}
-		//debug poll_count
-		std::cout << "poll_count = " << poll_count << std::endl;
-		for (size_t i = 0; i < poll_fds.size(); i++) {
-			std::cout << "fd: " << poll_fds[i].fd << " revents: " << poll_fds[i].revents << std::endl;
-		}
-		//debug poll_count
-
 
 		for (size_t i = 0; i < poll_fds.size(); i++) {
-			std::cout << "DEBUG: i is: " << i << std::endl;
 			if (poll_fds[i].revents & POLLIN) {
 				if (std::find(ss_Fds.begin(), ss_Fds.end(), poll_fds[i].fd) != ss_Fds.end()) {
 					handleNewConnection(poll_fds[i].fd);
@@ -116,30 +82,60 @@ void Server::handleNewConnection(int listen_id) {
 
 void Server::handleClientData(int client_fd) {
 	std::cout << "DEBUG: handleClientData" << std::endl;
-	char buffer[4096] = {0};
-	ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-	if (bytes_read <= 0) {
-		closeClient(client_fd);
-		return ;
-	}
-	std::cout << "Received request from client :\n" << buffer << std::endl;
+	char buf[BUF_SIZE];
+	std::string request;
+    ssize_t nread;
+    size_t header_end = std::string::npos;
+    int contentLength = 0;
+	Response res;
+    std::string response;
 
-	Request req = Request::parse(buffer);
+	while (true) {
+        nread = recv(client_fd, buf, BUF_SIZE - 1, 0);
+        if (nread <= 0) {
+            closeClient(client_fd);
+            return;
+        }
+        request.append(buf, nread);
+        if (header_end == std::string::npos) {
+            header_end = request.find("\r\n\r\n");
+            if (header_end != std::string::npos) {
+                header_end += 4;
+                std::string headers = request.substr(0, header_end);
+                contentLength = res.getContentLength(headers);
+            }
+        }
+        // If headers found and body fully received
+        if (header_end != std::string::npos && request.size() >= header_end + contentLength)
+            break;
+    }
 
-	ServerConfigs cfg = clientConfigs[client_fd];
-	std::string root = cfg.root;
-	std::string path = root + (req.path == "/" ? "/index.html" : req.path);
-	std::string body = read_file(path);
-	std::string response;
+	if (res.isMalformedRequest(request)) {
+        response = res.getErrorResponse(400);
+    } else {
+        res.parseRequest(request);
+        response = res.routing(res.getRequestLine().method, res.getRequestLine().url);
+    }
 
-	if (req.method != "GET") {
-		response = Response::build("<h1>405 Method Not Allowed</h1>", "text/html", 405, "Method Not Allowed");
-	} else if (body.empty()) {
-		body = read_file(root + "/404.html");
-		response = Response::build(body, "text/html", 404, "Not Found");
-	} else {
-		response = Response::build(body);
-	}
+
+	// std::cout << "Received request from client :\n" << buffer << std::endl;
+
+	// Request req = Request::parse(buffer);
+
+	// ServerConfigs cfg = clientConfigs[client_fd];
+	// std::string root = cfg.root;
+	// std::string path = root + (req.path == "/" ? "/index.html" : req.path);
+	// std::string body = read_file(path);
+	// std::string response;
+
+	// if (req.method != "GET") {
+	// 	response = Response::build("<h1>405 Method Not Allowed</h1>", "text/html", 405, "Method Not Allowed");
+	// } else if (body.empty()) {
+	// 	body = read_file(root + "/404.html");
+	// 	response = Response::build(body, "text/html", 404, "Not Found");
+	// } else {
+	// 	response = Response::build(body);
+	// }
 
 	responses[client_fd] = response;
 
@@ -192,11 +188,6 @@ void Server::cleanup () {
 		close(poll_fds[i].fd);
 	}
 	poll_fds.clear();
-
-	// if (server_fd != -1) {
-	// 	close(server_fd);
-	// 	server_fd = -1;
-	// }
 }
 
 void Server::setupPorts() {

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Uploaded Files</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6f8;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 20px;
+    }
+
+    .container {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      width: 100%;
+    }
+
+    h2, h3 {
+      margin-top: 0;
+      color: #2c3e50;
+      text-align: center;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    input[type="file"] {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    button {
+      padding: 12px;
+      background-color: #3498db;
+      border: none;
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease-in-out;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    #uploaded-files {
+      margin-top: 20px;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    li {
+      margin: 10px 0;
+      padding: 10px;
+      background-color: #ecf0f1;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+
+    li:hover {
+      background-color: #dce3e7;
+    }
+
+    a {
+      text-decoration: none;
+      color: #2c3e50;
+      font-weight: 500;
+      display: block;
+    }
+
+    a:hover {
+      color: #3498db;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- File Upload Form -->
+    <div class="upload-box">
+      <h2>Upload a File</h2>
+      <form id="upload-form" enctype="multipart/form-data">
+        <input type="file" id="file" name="file" required />
+        <button type="submit">Upload</button>
+      </form>
+    </div>
+
+    <div id="uploaded-files">
+      <h3>Uploaded Files</h3>
+      <ul id="file-list"></ul>
+    </div>
+  </div>
+
+  <script>
+    // Create a file list item with a delete button
+    function createFileListItem(filename) {
+      const li = document.createElement('li');
+
+      const link = document.createElement('a');
+      link.href = `/uploads/${filename}`;
+      link.target = '_blank';
+      link.textContent = filename;
+
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'Delete';
+      delBtn.style.marginLeft = '350px';
+      delBtn.onclick = () => deleteFile(filename, li);
+
+      li.appendChild(link);
+      li.appendChild(delBtn);
+
+      return li;
+    }
+
+    // Handle form submit (upload)
+    document.getElementById('upload-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const formData = new FormData(e.target);
+      const fileInput = document.getElementById('file');
+      const file = fileInput.files[0];
+
+      if (!file) return alert('Please select a file.');
+
+      try {
+        const res = await fetch('/uploads', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error('Upload failed');
+
+        // Append uploaded file to list
+        const list = document.getElementById('file-list');
+        list.appendChild(createFileListItem(file.name));
+
+        fileInput.value = ''; // reset input
+      } catch (err) {
+        alert('Upload failed: ' + err.message);
+      }
+    });
+
+    // Delete file request and remove from list item
+    async function deleteFile(filename, listItem) {
+      if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
+
+      try {
+        const res = await fetch(`/uploads/${filename}`, {
+          method: 'DELETE',
+        });
+
+        if (!res.ok) throw new Error('Failed to delete file');
+
+        listItem.remove();
+        alert(`${filename} deleted.`);
+      } catch (err) {
+        alert('Error deleting file: ' + err.message);
+      }
+    }
+  </script>
+</body>
+
+</html>

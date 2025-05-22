@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>About Mini Serv</title>
+	<style>
+		body {
+			font-family: 'Segoe UI', sans-serif;
+			text-align: center;
+			padding: 55px;
+			background-color: #f9f9f9;
+		}
+		h1 {
+			color: #333;
+			margin-bottom: 30px;
+		}
+		.progress-container {
+			width: 80%;
+			max-width: 400px;
+			margin: 0 auto;
+			background-color: #eee;
+			border: 9px solid #f3f3f3;
+			border-radius: 20px;
+			overflow: hidden;
+			box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+		}
+		.progress-bar {
+			width: 0%;
+			height: 20px;
+			background-color: #3498db;
+			transition: width 0.3s ease-in-out;
+		}
+		.message {
+			margin-top: 20px;
+			font-size: 1.2em;
+			color: #666;
+		}
+		.container {
+			max-width: 800px;
+			margin: 0 auto;
+			text-align: left;
+			padding: 20px;
+			background-color: #fff;
+			border-radius: 10px;
+			box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+		}
+		.container h2 {
+			color: #3498db;
+		}
+		.container p {
+			font-size: 1.1em;
+			color: #444;
+		}
+	</style>
+</head>
+
+<body>
+	<h1>Welcome to Mini Serv</h1>
+	<img src="https://images.unsplash.com/photo-1518770660439-4636190af475?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+         alt="Coding illustration" 
+         style="width: 100%; max-width: 600px; border-radius: 10px; margin: 20px 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+	<div class="container">
+		<h2>About Mini Serv</h2>
+		<p><strong>Mini Serv</strong> is a lightweight server framework designed for rapid development and deployment of small-scale web applications and services. It is optimized for performance, simplicity, and scalability.</p>
+		<p>Whether you're creating a small internal tool or just exploring server-side programming, Mini Serv provides a solid foundation for your project.</p>
+		
+		<h3>Key Features:</h3>
+		<ul>
+			<li>Easy to set up and get started</li>
+			<li>Built-in support for HTTP requests and responses</li>
+			<li>Lightweight and modular architecture</li>
+			<li>Flexible routing for defining application endpoints</li>
+			<li>Supports customizable error handling and responses</li>
+		</ul>
+
+		<h3>Project Goals:</h3>
+		<ul>
+			<li>Provide a simple, intuitive framework for beginners</li>
+			<li>Ensure efficient handling of web traffic</li>
+			<li>Allow easy expansion with minimal configuration</li>
+		</ul>
+	</div>
+
+	<h1>Mini Serv is starting...</h1>
+	<div class="progress-container">
+		<div class="progress-bar" id="progress-bar"></div>
+	</div>
+	<div class="message" id="message">Loading...</div>
+
+	<script>
+		let progress = 0;
+		const bar = document.getElementById('progress-bar');
+		const msg = document.getElementById('message');
+
+		const interval = setInterval(() => {
+			progress += 10;
+			bar.style.width = progress + '%';
+			if (progress >= 100) {
+				clearInterval(interval);
+				msg.textContent = "Mini serv is Ready";
+			}
+		}, 300);
+	</script>
+</body>
+</html>
