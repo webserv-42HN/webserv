@@ -12,7 +12,7 @@ int main() {
 
 	Server myServer(parser.getConfigs());
 
-	// serv.run();
+	myServer.run();
 
 	return(0);
 }

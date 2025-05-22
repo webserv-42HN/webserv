@@ -6,6 +6,7 @@
 struct ServerConfigs
 {
     int port;
+    std::string server_name;
     std::string root;
     int sock_fd;
 };

@@ -8,48 +8,115 @@
 #include <cstring>
 #include <signal.h>
 
-Server::Server(std::vector<ServerConfigs> config) : config(config) {
-	Server::setupPorts();
-}
+volatile sig_atomic_t gSignal = 1;
 
 bool Server::running = true;
 
+Server::Server(std::vector<ServerConfigs> config) : config(config) {
+	setupPorts();
+}
+
+void Server::run() {
+	signal(SIGINT, signalHandler);
+	signal(SIGTERM, signalHandler);
+
+	mainLoop();
+	cleanup();
+}
+
+void Server::signalHandler(int signum) {
+	(void)signum;
+	// std::cout << "Shuttimg down the server..." << std::endl;
+	running = false;
+}
+
+void stopLoop(int) {
+	gSignal = 0;
+}
+
+void Server::incoming(int fd) {
+	std::cout << "DEBUG: determining what diz POLLIN is about" << std::endl;
+	if (std::find(ss_Fds.begin(), ss_Fds.end(), fd) != ss_Fds.end())
+	{
+		std::cout << "we got new connection!" << std::endl;
+	}
+	else {
+		std::cout << "we got a request!" << std::endl;
+	}
+
+}
+
 void Server::mainLoop() {
-	while (running) {
-		int poll_count = poll(poll_fds.data(), poll_fds.size(), 1000);
-		if (poll_count < 0) {
+	if(config.size() < 1)
+		return ;
+
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGINT, stopLoop);
+
+	while (gSignal) {
+		if (poll(&poll_fds[0], poll_fds.size(), 0) == -1 && gSignal == 1) {
 			perror("poll");
-			break;
 		}
 
 		for (size_t i = 0; i < poll_fds.size(); i++) {
-			if (poll_fds[i].revents & POLLIN) {
-				if (poll_fds[i].fd == server_fd) {
-					handleNewConnection();
-				} else {
-					handleClientData(poll_fds[i].fd);
-				}
+			if(poll_fds[i].revents & POLLIN) {
+				incoming(poll_fds[i].fd);
 			}
-
-			if (poll_fds[i].revents & POLLOUT) {
+			else
 				handleClientWrite(poll_fds[i].fd);
-			}
 		}
 	}
 }
 
-void Server::handleNewConnection() {
-	int client_fd = accept(server_fd, nullptr, nullptr);
+// void Server::mainLoop() {
+// 	std::cout << "DEBUG: main LOOp" << std::endl;
+// 	while (running) {
+// 		int poll_count = poll(poll_fds.data(), poll_fds.size(), 1000);
+// 		if (poll_count < 0) {
+// 			perror("poll");
+// 			break;
+// 		}
+// 		//debug poll_count
+// 		std::cout << "poll_count = " << poll_count << std::endl;
+// 		for (size_t i = 0; i < poll_fds.size(); i++) {
+// 			std::cout << "fd: " << poll_fds[i].fd << " revents: " << poll_fds[i].revents << std::endl;
+// 		}
+// 		//debug poll_count
+
+
+// 		for (size_t i = 0; i < poll_fds.size(); i++) {
+// 			std::cout << "DEBUG: i is: " << i << std::endl;
+// 			if (poll_fds[i].revents & POLLIN) {
+// 				if (std::find(ss_Fds.begin(), ss_Fds.end(), poll_fds[i].fd) != ss_Fds.end()) {
+// 					handleNewConnection(poll_fds[i].fd);
+// 				} else {
+// 					handleClientData(poll_fds[i].fd);
+// 				}
+// 			}
+
+// 			if (poll_fds[i].revents & POLLOUT) {
+// 				handleClientWrite(poll_fds[i].fd);
+// 			}
+// 		}
+// 	}
+// }
+
+
+void Server::handleNewConnection(int listen_id) {
+	std::cout << "DEBUG: handleNewConnection" << std::endl;
+	int client_fd = accept(listen_id, nullptr, nullptr);
 		if (client_fd < 0) {
 			perror("accept");
 			return ;
 		}
 	struct pollfd pfd = {client_fd, POLLIN, 0};
 	poll_fds.push_back(pfd);
+	clientConfigs[client_fd] = serverSockets[listen_id];
 }
 
 void Server::handleClientData(int client_fd) {
-	char buffer[1024] = {0};
+	std::cout << "DEBUG: handleClientData" << std::endl;
+	char buffer[4096] = {0};
 	ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
 	if (bytes_read <= 0) {
 		closeClient(client_fd);
@@ -58,6 +125,9 @@ void Server::handleClientData(int client_fd) {
 	std::cout << "Received request from client :\n" << buffer << std::endl;
 
 	Request req = Request::parse(buffer);
+
+	ServerConfigs cfg = clientConfigs[client_fd];
+	std::string root = cfg.root;
 	std::string path = root + (req.path == "/" ? "/index.html" : req.path);
 	std::string body = read_file(path);
 	std::string response;
@@ -77,13 +147,13 @@ void Server::handleClientData(int client_fd) {
 		if (pfd.fd == client_fd) {
 			pfd.events = POLLOUT;
 			pfd.revents = 0;
-
 			break;
 		}
 	}
 }
 
 void Server::handleClientWrite(int client_fd) {
+	std::cout << "DEBUG: handleClientWrite" << std::endl;
 	auto it = responses.find(client_fd);
 	if (it == responses.end()) {
 		std::cerr << "No response found for client " << client_fd << std::endl;
@@ -113,6 +183,8 @@ void Server::closeClient(int client_fd){
 			break;
 		}
 	}
+
+	clientConfigs.erase(client_fd);
 }
 
 void Server::cleanup () {
@@ -121,10 +193,10 @@ void Server::cleanup () {
 	}
 	poll_fds.clear();
 
-	if (server_fd != -1) {
-		close(server_fd);
-		server_fd = -1;
-	}
+	// if (server_fd != -1) {
+	// 	close(server_fd);
+	// 	server_fd = -1;
+	// }
 }
 
 void Server::setupPorts() {
@@ -146,7 +218,7 @@ void Server::setupPorts() {
 			}
 
 			if (fcntl(it->sock_fd, F_SETFL, O_NONBLOCK) < 0) {
-				perror("fctnl");
+				perror("fcntl");
 				exit(1);
 			}
 
@@ -165,18 +237,22 @@ void Server::setupPorts() {
 				std::cerr << "Listen failed\n";
 				return ;
 			}
-			std::cout << "Middle Serv running on the port " << port << std::endl;
+			std::cout << "Middle Serv running on the port " << it->port << std::endl;
 			struct pollfd pollfd = {it->sock_fd, POLLIN, 0};
 			poll_fds.push_back(pollfd);
 			ss_Fds.push_back(it->sock_fd);
 			uniqPorts.push_back(it->port);
+			serverSockets[it->sock_fd] = *it; //I added the server socket to map
 			std::cout << "we pushed: "  << "sock_fd: " << it->sock_fd << ", port: " << it->port << std::endl;
 		}
 		++it;
 	}
 
-	std::cout << "=== Results of setupPorts() ===" << std::endl;
+//======================check of setup==============================
+//======================to delelte==================================
 
+	std::cout << "=== Results of setupPorts() ===" << std::endl;
+std::cout << "somaxconn: " << SOMAXCONN << std::endl;
 // Print unique ports
 std::cout << "[Unique Ports]" << std::endl;
 for (std::vector<int>::iterator it = uniqPorts.begin(); it != uniqPorts.end(); ++it) {
@@ -196,20 +272,32 @@ for (std::vector<struct pollfd>::iterator it = poll_fds.begin(); it != poll_fds.
 	          << ", events: " << it->events
 	          << ", revents: " << it->revents << " }" << std::endl;
 }
+//======================check of setup==============================
+//======================to delelte==================================
 
 }
 
-void Server::run() {
-	signal(SIGINT, signalHandler);
-	signal(SIGTERM, signalHandler);
 
-	setupPorts();
-	mainLoop();
-	cleanup();
-}
 
-void Server::signalHandler(int signum) {
-	(void)signum;
-	std::cout << "Shuttimg down the server..." << std::endl;
-	running = false;
-}
+
+
+
+//==============================================================
+//===========example of poll usage==============================
+
+// int ret = poll(fds, nfds, timeout);
+// if (ret == -1) {
+//     if (errno == EINTR) {
+//         // handle signal interruption or just retry
+//     } else {
+//         perror("poll failed");
+//         exit(EXIT_FAILURE);
+//     }
+// } else if (ret == 0) {
+//     // timeout, no events
+// } else {
+//     // check each fds[i].revents to see what happened
+// }
+
+//--------------------------------------------------------------
+//--------------------------------------------------------------
