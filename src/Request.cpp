@@ -54,7 +54,7 @@ void Request::parseBody(const std::string& raw) {
         return;
     }
     body = raw.substr(header_end + 4); // Move past \r\n\r\n
-    for (auto& header : headers) {
+    for (const std::pair<std::string, std::string>& header : headers) {
         if (header.first == "Content-Length") {
             content_length_value = header.second;
         } else if (header.first == "Transfer-Encoding") {
@@ -73,7 +73,7 @@ void Request::parseBody(const std::string& raw) {
 }
 
 void Request::parseContentType() {
-    for (const auto& header : headers) {
+    for (const std::pair<std::string, std::string>& header : headers) {
         if (header.first == "Content-Type") {
             content_type = header.second;
             // Trim leading spaces

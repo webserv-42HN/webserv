@@ -29,7 +29,7 @@ class Request
 {
 	protected:
 		s_request req_line;
-		std::vector<std::pair<std::string, std::string>> headers;
+		std::vector<std::pair<std::string, std::string> > headers;
 		std::string content_type;
 		std::string body;
 	public:

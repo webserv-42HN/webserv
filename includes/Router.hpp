@@ -17,6 +17,7 @@ class Router : public Response {
         t_routeConfig UploadsHandler(std::string url);
         t_routeConfig SubmitHandler(std::string url);
         t_routeConfig NotFoundHandler();
+        t_routeConfig cgiHandler(std::string url);
 };
 
 #endif

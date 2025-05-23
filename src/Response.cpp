@@ -19,7 +19,7 @@ std::string Response::routing(std::string method, std::string url) {
     HttpMethod http_method = methodToEnum(method);
     t_routeConfig config = router.getRouteConfig(url);
 
-    std::cout << "TEST TEST TEST TEST" << std::endl;
+    // std::cout << "TEST TEST TEST TEST" << std::endl;
 
     if (!config.redirect_to.empty()) {
         response = "HTTP/1.1 301 Moved Permanently\r\n";
@@ -41,7 +41,9 @@ std::string Response::routing(std::string method, std::string url) {
         }
         if (config.autoindex)
             return generateDirectoryListing(full_path);
-        return getErrorResponse(403);
+        std::cout << "TEST TEST TEST TEST" << std::endl;
+        
+        return getErrorResponse(404);
     }
     return generatingResponse(http_method, full_path);
 }

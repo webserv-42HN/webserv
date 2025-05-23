@@ -47,7 +47,7 @@ t_routeConfig Router::AboutHandler(std::string url) {
     config.allowed_methods = {GET};
     config.root_dir = "./www";
     config.redirect_to = "";
-    config.autoindex = false;
+    config.autoindex = true;
     return config;
 }
 
@@ -81,6 +81,17 @@ t_routeConfig Router::SubmitHandler(std::string url) {
     config.root_dir = "./www";
     config.redirect_to = "";
     config.autoindex = false;
+    return config;
+}
+
+t_routeConfig Router::cgiHandler(std::string url) {
+    t_routeConfig config;
+
+    (void)url;
+    config.allowed_methods = {GET, POST};
+    config.root_dir = "./www";
+    config.redirect_to = "";
+    config.autoindex = true;
     return config;
 }
 
