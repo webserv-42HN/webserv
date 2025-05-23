@@ -4,7 +4,7 @@
 #include <poll.h>
 #include <unordered_map>
 #include <map>
-#include "ConfigParser.hpp"
+#include "config_manager.hpp"
 #include <fcntl.h>
 
 struct ClientSession {
@@ -15,16 +15,16 @@ struct ClientSession {
 
 class Server {
 	private:
-		std::vector<ServerConfigs> config;
+		std::vector<ServerConfig> config;
 		std::vector<int> ss_Fds; //delete later, it's gonna be a map
-		std::map<int, ServerConfigs> serverSockets;
-		std::map<int, ServerConfigs> clientConfigs;
+		std::map<int, ServerConfig> serverSockets;
+		std::map<int, ServerConfig> clientConfigs;
 		std::vector<struct pollfd> poll_fds;
 		std::vector<int> uniqPorts;
 		std::map<int, ClientSession> client_sessions;
 
 	public:
-		Server(std::vector<ServerConfigs> config);
+		Server(std::vector<ServerConfig> config);
 		// ~Server();
 
 		void setupPorts(); //initial step when we go through the results of the parser,
