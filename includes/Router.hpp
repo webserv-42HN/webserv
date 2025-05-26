@@ -2,10 +2,12 @@
 #define ROUTER_HPP
 
 #include "Response.hpp"
+#include "config_manager.hpp"
 
 class Router : public Response {
     private:
         std::unordered_map<std::string, RouteHandler> routes;
+        std::string root;
     public:
         Router();
         ~Router();
@@ -18,6 +20,7 @@ class Router : public Response {
         t_routeConfig SubmitHandler(std::string url);
         t_routeConfig NotFoundHandler();
         t_routeConfig cgiHandler(std::string url);
+
 };
 
 #endif

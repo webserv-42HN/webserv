@@ -5,7 +5,6 @@ bool Response::handleFileUpload(const std::string& path, const std::string& body
     size_t boundary_len = boundary.length();
     bool fileSaved = false;
 
-    std::cout << "TEST TEST TEST" << std::endl;
     while ((pos = body.find(boundary, pos)) != std::string::npos)
     {
         pos += boundary_len;
@@ -84,27 +83,6 @@ std::string Response::responseApplication(std::string body) {
             resBody += "<li><strong>" + key + ":</strong> " + value + "</li>";
         }
     }
-    // // Ensure submit folder exists
-    // std::string folder = ".www/submit";
-    // struct stat st;
-    // if (stat(folder.c_str(), &st) == -1) {
-    //     mkdir(folder.c_str(), 0755);
-    // }
-    // // Choose filename (use name or fallback to timestamp)
-    // std::string filename = "entry.txt";
-    // if (data.find("name") != data.end() && !data["name"].empty()) {
-    //     filename = data["name"] + ".txt";
-    // } else {
-    //     std::time_t now = std::time(nullptr);
-    //     filename = "entry_" + std::to_string(now) + ".txt";
-    // }
-    // std::ofstream file(folder + "/" + filename);
-    // if (file.is_open()) {
-    //     for (const auto& [key, value] : data) {
-    //         file << key << ": " << value << "\n";
-    //     }
-    //     file.close();
-    // }
     resBody += "</ul></body></html>";
     return resBody;
 }

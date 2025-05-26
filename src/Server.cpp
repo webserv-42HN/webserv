@@ -65,7 +65,6 @@ void Server::mainLoop() {
 	}
 }
 
-
 void Server::handleNewConnection(int listen_id) {
 	std::cout << "DEBUG: handleNewConnection" << std::endl;
 	int client_fd = accept(listen_id, nullptr, nullptr);
@@ -111,7 +110,6 @@ void Server::handleClientData(int client_fd) {
 			res.parseRequest(full_request);
 			response = res.routing(res.getRequestLine().method, res.getRequestLine().url);
 		}
-
 		responses[client_fd] = response;
 		client_sessions.erase(client_fd); // Clear session
 
@@ -125,7 +123,6 @@ void Server::handleClientData(int client_fd) {
 		}
 	}
 }
-
 
 void Server::handleClientWrite(int client_fd) {
 	std::cout << "DEBUG: handleClientWrite" << std::endl;

@@ -1,4 +1,5 @@
 #include "../includes/Router.hpp"
+#include "../includes/config_manager.hpp"
 
 Router::Router() {
     // Register routes and corresponding handlers
@@ -7,6 +8,7 @@ Router::Router() {
     routes["/docs"] = std::bind(&Router::DocsHandler, this, std::placeholders::_1);
     routes["/uploads"] = std::bind(&Router::UploadsHandler, this, std::placeholders::_1);
     routes["/submit"] = std::bind(&Router::SubmitHandler, this, std::placeholders::_1);
+    routes["/cgi"] = std::bind(&Router::cgiHandler, this, std::placeholders::_1);
 }
 
 Router::~Router() {

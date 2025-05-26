@@ -42,7 +42,7 @@ class Server {
 		void handleClientWrite(int client_fd);
 		void closeClient(int client_fd);
 
-
 		static bool running;
 		std::unordered_map<int, std::string> responses;
 };
+

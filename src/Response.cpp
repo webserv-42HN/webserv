@@ -41,7 +41,6 @@ std::string Response::routing(std::string method, std::string url) {
         }
         if (config.autoindex)
             return generateDirectoryListing(full_path);
-        std::cout << "TEST TEST TEST TEST" << std::endl;
         
         return getErrorResponse(404);
     }
@@ -91,7 +90,6 @@ std::string Response::getPostResponse(const std::string& url) {
     std::string resBody;
     std::string uploadedFile;
 
-    std::cout << "TEST TEST TEST" << std::endl;
     if (content_type.empty())
         return getErrorResponse(400); // Bad Request - No Content-Type
     // Handle URL-encoded form submission (e.g., /submit)
