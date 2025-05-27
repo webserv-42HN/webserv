@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <cstdio>
 #include <cstdlib>
+#include <set>
 
 #define BUF_SIZE 8194
 
@@ -78,6 +79,7 @@ void Server::handleNewConnection(int listen_id) {
 }
 
 void Server::handleClientData(int client_fd) {
+
 	std::cout << "DEBUG: handleClientData" << std::endl;
 	char buf[BUF_SIZE];
 	ssize_t nread = recv(client_fd, buf, BUF_SIZE - 1, 0);
@@ -143,7 +145,14 @@ void Server::handleClientWrite(int client_fd) {
 	// std::cout << "Sent response to client :\n" << response << std::endl;
 
 	responses.erase(client_fd);
-	closeClient(client_fd);
+
+	for (auto& pfd : poll_fds) {
+		if(pfd.fd == client_fd) {
+			pfd.events = POLLIN;
+			break;
+		}
+	}
+	//closeClient(client_fd);
 }
 
 void Server::closeClient(int client_fd){
@@ -167,6 +176,14 @@ void Server::cleanup () {
 }
 
 void Server::setupPorts() {
+	std::set<int> seenPorts;
+	for (std::vector<ServerConfig>::iterator it = config.begin(); it != config.end(); ++it) {
+		if (!seenPorts.insert(it->port).second) {
+			std::cerr << "Error: Port " << it->port << " is declared more than once in the config.\n";
+			exit(1);
+		}
+	}
+
 	std::vector<ServerConfig>::iterator it = config.begin();
 	std::vector<ServerConfig>::iterator it_end = config.end();
 
