@@ -78,7 +78,8 @@ void Server::handleNewConnection(int listen_id) {
 }
 
 void Server::handleClientData(int client_fd) {
-	Response res(config);
+  std::vector<ServerConfig> clientConfig = {clientConfigs[client_fd]};
+	Response res(clientConfig);
 
 	std::cout << "DEBUG: handleClientData" << std::endl;
 	char buf[BUF_SIZE];

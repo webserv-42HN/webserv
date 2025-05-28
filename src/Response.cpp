@@ -5,6 +5,7 @@
 #include "../includes/Router.hpp"
 #include "../includes/Request.hpp"
 #include <limits>
+#include <unistd.h> // Required for getcwd
 
 Response::Response(std::vector<ServerConfig> config): Rconfig(config) {}
 
@@ -17,13 +18,20 @@ std::string Response::routing(std::string method, std::string url) {
     HttpMethod http_method = methodToEnum(method);
     t_routeConfig config = router.getRouteConfig(url);
 
+    /////////////
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        std::cout << "Current working directory: " << cwd << std::endl;
+    }
+    //////////////
+
     for (size_t i = 0; i < Rconfig.size(); i++) {
       std::cout << "SERVER NAMES: ";
       for (const auto& name : Rconfig[i].server_names) {
           std::cout << name << " ";
       }
       std::cout << std::endl;
-  }
+    }
 
     if (!config.redirect_to.empty()) {
         response = "HTTP/1.1 301 Moved Permanently\r\n";
@@ -33,9 +41,39 @@ std::string Response::routing(std::string method, std::string url) {
     auto it = std::find(config.allowed_methods.begin(),
                         config.allowed_methods.end(),
                         http_method);
+    // Special case: Allow HEAD if GET is allowed
+    if (it == config.allowed_methods.end() && http_method == HEAD) {
+    it = std::find(config.allowed_methods.begin(),
+                  config.allowed_methods.end(),
+                  GET);
+    }
     if (it == config.allowed_methods.end())
         return getErrorResponse(405);
-    full_path = config.root_dir + url;
+
+    // full_path = config.root_dir + url;
+    if (url == "/") {
+      // Just use the root directory for the root URL
+      full_path = config.root_dir;
+    } else {
+      // For all other URLs, remove the leading slash if present
+      if (url[0] == '/') {
+          full_path = config.root_dir + url.substr(1);
+      } else {
+          full_path = config.root_dir + url;
+      }
+    }
+    ////////////////
+    std::cout << "URL: " << url << std::endl;
+    std::cout << "Full path: " << full_path << std::endl;
+    std::cout << "Is directory: " << (isDirectory(full_path) ? "yes" : "no") << std::endl;
+
+    // After getting config from router
+    std::cout << "Selected route config:" << std::endl;
+    std::cout << "  Root dir: " << config.root_dir << std::endl;
+    std::cout << "  Default file: " << config.default_file << std::endl;
+    std::cout << "  Autoindex: " << (config.autoindex ? "on" : "off") << std::endl;
+
+    //////////////
     if (isDirectory(full_path) && method == "GET") {
       std::string default_file = config.default_file.empty() ? "index.html" : config.default_file;
       std::string index_path = full_path;
@@ -44,6 +82,9 @@ std::string Response::routing(std::string method, std::string url) {
       }
       index_path += default_file;
 
+      std::cout << "Trying to open: " << index_path << std::endl;
+      std::cout << "File exists: " << (access(index_path.c_str(), F_OK) == 0 ? "yes" : "no") << std::endl;
+      std::cout << "File readable: " << (access(index_path.c_str(), R_OK) == 0 ? "yes" : "no") << std::endl;
       std::ifstream index_file(index_path);
       if (index_file.good()) {
           index_file.close();

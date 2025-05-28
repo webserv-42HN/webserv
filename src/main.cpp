@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
     std::cerr << "Configuration error: " << configManager.getErrorMessage() << std::endl;
     return 1;
   }
-  // configManager.printConfigs();
+  configManager.printConfigs();
 
 	Server myServer(configManager.getServerConfigs());
 
