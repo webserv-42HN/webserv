@@ -79,6 +79,7 @@ void Server::handleNewConnection(int listen_id) {
 
 void Server::handleClientData(int client_fd) {
 	Response res(config);
+	std::string headers;
 
 	std::cout << "DEBUG: handleClientData" << std::endl;
 	char buf[BUF_SIZE];
@@ -92,23 +93,32 @@ void Server::handleClientData(int client_fd) {
 	session.buffer.append(buf, nread);
 
 	size_t header_end = session.buffer.find("\r\n\r\n");
+	std::string header_str = session.buffer.substr(0, header_end + 4);
 	if (!session.headers_received && header_end != std::string::npos) {
 		session.headers_received = true;
 		header_end += 4;
-		std::string headers = session.buffer.substr(0, header_end);
+		headers = session.buffer.substr(0, header_end);
 		session.content_length = res.getContentLength(headers);
 	}
 
 	// If full request (headers + body) received
 	if (session.headers_received && session.buffer.size() >= header_end + session.content_length) {
 		std::string full_request = session.buffer;
-
 		std::string response;
+		
 		if (res.isMalformedRequest(full_request)) {
 			response = res.getErrorResponse(400);
 		} else {
 			res.parseRequest(full_request);
-			response = res.routing(res.getRequestLine().method, res.getRequestLine().url);
+			std::cout << "LENGTH: " << res.getContentLength(header_str) << std::endl;
+			std::cout << "CLIENT_MAX_BODY_SIZE: " << config[0].client_max_body_size << std::endl;
+			if (res.getContentLength(header_str) > config[0].client_max_body_size)
+			{
+				std::cout << "DEBUG: Payload Too Large" << std::endl;
+				response = res.getErrorResponse(413); // Payload Too Large
+			}
+			else
+				response = res.routing(res.getRequestLine().method, res.getRequestLine().url);
 		}
 		responses[client_fd] = response;
 		client_sessions.erase(client_fd); // Clear session
@@ -141,7 +151,6 @@ void Server::handleClientWrite(int client_fd) {
 		return ;
 	}
 	// std::cout << "Sent response to client :\n" << response << std::endl;
-
 	responses.erase(client_fd);
 	closeClient(client_fd);
 }

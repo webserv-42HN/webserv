@@ -32,6 +32,7 @@ class Request
 		std::vector<std::pair<std::string, std::string> > headers;
 		std::string content_type;
 		std::string body;
+		std::size_t content_len;
 	public:
 		bool isMalformedRequest(std::string &raw_req);
 		std::string encodeChunkedBody(const std::string &body);

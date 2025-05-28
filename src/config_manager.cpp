@@ -138,8 +138,11 @@ ServerConfig ConfigManager::buildServerConfig(const ServerBlock& block) {
               route.upload_dir = dir.args[0];
           else if (dir.name == "cgi" && dir.args.size() == 2)
               route.cgi_handlers[dir.args[0]] = dir.args[1];
+          else if (dir.name == "client_max_body_size" && !dir.args.empty())
+              route.client_max_body_size = std::stoul(dir.args[0]);
+        
       }
-
+      route.client_max_body_size = config.client_max_body_size;
       config.routes.push_back(route);
   }
 

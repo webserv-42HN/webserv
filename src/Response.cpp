@@ -17,14 +17,6 @@ std::string Response::routing(std::string method, std::string url) {
     HttpMethod http_method = methodToEnum(method);
     t_routeConfig config = router.getRouteConfig(url);
 
-    for (size_t i = 0; i < Rconfig.size(); i++) {
-      std::cout << "SERVER NAMES: ";
-      for (const auto& name : Rconfig[i].server_names) {
-          std::cout << name << " ";
-      }
-      std::cout << std::endl;
-  }
-
     if (!config.redirect_to.empty()) {
         response = "HTTP/1.1 301 Moved Permanently\r\n";
         response += "Location: " + config.redirect_to + "\r\n\r\n";
@@ -37,7 +29,7 @@ std::string Response::routing(std::string method, std::string url) {
         return getErrorResponse(405);
     full_path = config.root_dir + url;
     if (isDirectory(full_path) && method == "GET") {
-        std::string index_path = "./www" + url + "/index.html";
+        std::string index_path = config.root_dir + url + "/index.html";
         std::ifstream index_file(index_path);
         if (index_file.good()) {
             index_file.close();
@@ -74,10 +66,10 @@ std::string Response::generatingResponse(HttpMethod method, std::string full_url
 }
 
 std::string Response::getGetResponse(const std::string& requested_path, int statusCode) {
+    
     std::ifstream file(requested_path, std::ifstream::binary);
     if (!file.is_open())
         return getErrorResponse(404);
-
     file.seekg(0, std::ios::end);
     std::streampos size = file.tellg();
     file.seekg(0, std::ios::beg);
@@ -96,7 +88,8 @@ std::string Response::getPostResponse(const std::string& url) {
 
     if (content_type.empty())
         return getErrorResponse(400); // Bad Request - No Content-Type
-    // Handle URL-encoded form submission (e.g., /submit)
+    
+        // Handle URL-encoded form submission (e.g., /submit)
     if (content_type == "application/x-www-form-urlencoded") {
         if (body.empty())
             return getErrorResponse(400);
@@ -142,6 +135,6 @@ std::string Response::getDeleteResponse(const std::string& filepath) {
 }
 
 std::string Response::getErrorResponse(int statusCode) {
-    std::string error_page = error_dir + std::to_string(statusCode) + "_error.html";
+    std::string error_page = "./www/error/" + std::to_string(statusCode) + "_error.html";
     return getGetResponse(error_page, statusCode);
 }

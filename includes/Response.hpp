@@ -35,7 +35,9 @@ enum StatusCode {
     OK = 200,
     BadRequest = 400,
     NotFound = 404,
-    InternalServerError = 500
+    InternalServerError = 500,
+    FileTooLarge = 413,
+    Forbidden = 403
 };
 
 // enum HttpMethod {
@@ -50,6 +52,7 @@ typedef struct RouteConfig {
     std::string root_dir;
     std::string redirect_to;
     bool autoindex;
+    std::size_t client_max_body_size;
 }   t_routeConfig;
 
 using RouteHandler = std::function<t_routeConfig(std::string)>;
@@ -58,10 +61,11 @@ using RouteHandler = std::function<t_routeConfig(std::string)>;
 class Response : public Request
 {
     protected:
-        std::string error_dir = "./www/error/";
+        // std::string error_dir = "./www/error/";
         t_routeConfig route_config;
         std::vector<ServerConfig> Rconfig;
-        std::unordered_map<std::string, RouteHandler> routes;
+        // Request request;
+        // std::unordered_map<std::string, RouteHandler> routes;
 
     public:
         Response(std::vector<ServerConfig> config);

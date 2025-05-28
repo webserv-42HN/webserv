@@ -47,7 +47,6 @@ t_routeConfig Router::getRouteConfig(std::string url) {
     if (it != dynamicRoutes.end()) {
         return convertToRouteConfig(it->second);
     }
-
     // Partial match: find the longest matching prefix
     std::string bestMatch;
     for (const auto& route : dynamicRoutes) {
@@ -55,11 +54,9 @@ t_routeConfig Router::getRouteConfig(std::string url) {
             bestMatch = route.first;
         }
     }
-
     if (!bestMatch.empty()) {
         return convertToRouteConfig(dynamicRoutes[bestMatch]);
     }
-
     return NotFoundHandler(); // fallback
 }
 
@@ -82,6 +79,7 @@ t_routeConfig Router::convertToRouteConfig(const RouteConfigFromConfigFile& cfg)
     config.root_dir = cfg.root;
     config.redirect_to = ""; // Set if needed
     config.autoindex = cfg.autoindex;
+    config.client_max_body_size = cfg.client_max_body_size;
     return config;
 }
 

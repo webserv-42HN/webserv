@@ -59,6 +59,7 @@ struct RouteConfigFromConfigFile {
     std::vector<std::string> allowed_methods;
     std::map<std::string, std::string> cgi_handlers;
     std::string upload_dir;
+    std::size_t client_max_body_size = 1024 * 1024; // Default to 1MB
 };
 
 struct ServerConfig {
