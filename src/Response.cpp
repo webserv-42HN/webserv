@@ -37,16 +37,22 @@ std::string Response::routing(std::string method, std::string url) {
         return getErrorResponse(405);
     full_path = config.root_dir + url;
     if (isDirectory(full_path) && method == "GET") {
-        std::string index_path = "./www" + url + "/index.html";
-        std::ifstream index_file(index_path);
-        if (index_file.good()) {
-            index_file.close();
-            return getGetResponse(index_path, 200);
-        }
-        if (config.autoindex)
-            return generateDirectoryListing(full_path);
-        
-        return getErrorResponse(404);
+      std::string default_file = config.default_file.empty() ? "index.html" : config.default_file;
+      std::string index_path = full_path;
+      if (index_path.back() != '/') {
+          index_path += "/";
+      }
+      index_path += default_file;
+
+      std::ifstream index_file(index_path);
+      if (index_file.good()) {
+          index_file.close();
+          return getGetResponse(index_path, 200);
+      }
+      if (config.autoindex)
+          return generateDirectoryListing(full_path);
+      
+      return getErrorResponse(404);
     }
     return generatingResponse(http_method, full_path);
 }

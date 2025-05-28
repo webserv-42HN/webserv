@@ -82,6 +82,7 @@ t_routeConfig Router::convertToRouteConfig(const RouteConfigFromConfigFile& cfg)
     config.root_dir = cfg.root;
     config.redirect_to = ""; // Set if needed
     config.autoindex = cfg.autoindex;
+    config.default_file = cfg.default_file;
     return config;
 }
 

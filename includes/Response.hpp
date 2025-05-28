@@ -49,6 +49,7 @@ typedef struct RouteConfig {
     std::vector<HttpMethod> allowed_methods;
     std::string root_dir;
     std::string redirect_to;
+    std::string default_file;
     bool autoindex;
 }   t_routeConfig;
 
