@@ -17,12 +17,13 @@ std::string Response::routing(std::string method, std::string url) {
     HttpMethod http_method = methodToEnum(method);
     t_routeConfig config = router.getRouteConfig(url);
 
-    size_t i = 0;
-    while(i < Rconfig.size()) {
-        std::cout << "SERVER NAME NAME: ";
-        std::cout << Rconfig[i].server_names[i] << std::endl;
-        i++;
-    }
+    for (size_t i = 0; i < Rconfig.size(); i++) {
+      std::cout << "SERVER NAMES: ";
+      for (const auto& name : Rconfig[i].server_names) {
+          std::cout << name << " ";
+      }
+      std::cout << std::endl;
+  }
 
     if (!config.redirect_to.empty()) {
         response = "HTTP/1.1 301 Moved Permanently\r\n";
