@@ -78,6 +78,8 @@ void Server::handleNewConnection(int listen_id) {
 }
 
 void Server::handleClientData(int client_fd) {
+	Response res(config);
+
 	std::cout << "DEBUG: handleClientData" << std::endl;
 	char buf[BUF_SIZE];
 	ssize_t nread = recv(client_fd, buf, BUF_SIZE - 1, 0);
@@ -94,13 +96,11 @@ void Server::handleClientData(int client_fd) {
 		session.headers_received = true;
 		header_end += 4;
 		std::string headers = session.buffer.substr(0, header_end);
-		Response res;
 		session.content_length = res.getContentLength(headers);
 	}
 
 	// If full request (headers + body) received
 	if (session.headers_received && session.buffer.size() >= header_end + session.content_length) {
-		Response res;
 		std::string full_request = session.buffer;
 
 		std::string response;

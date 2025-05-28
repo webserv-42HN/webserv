@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
 
 	Server myServer(configManager.getServerConfigs());
 
+
 	myServer.run();
 
 	return(0);

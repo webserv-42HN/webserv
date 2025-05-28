@@ -8,11 +8,20 @@
 #include <sstream>
 #include <iostream>
 #include <regex>
+// #include "../includes/Response.hpp"
 
 // Forward declarations
 class ConfigManager;
 class ConfigParser;
 class ConfigTokenizer;
+
+// HTTP methods
+enum HttpMethod {
+    GET,
+    POST,
+    DELETE,
+    UNKNOWN
+};
 
 // Token definitions
 enum class TokenType { Identifier, Symbol, String, Comment, EndOfFile };
@@ -44,7 +53,7 @@ struct RouteConfigFromConfigFile {
     std::string root;
     std::string default_file;
     bool autoindex = false;
-    std::vector<std::string> allowed_methods;
+    std::vector<HttpMethod> allowed_methods;
     std::map<std::string, std::string> cgi_handlers;
     std::string upload_dir;
 };

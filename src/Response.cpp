@@ -6,20 +6,23 @@
 #include "../includes/Request.hpp"
 #include <limits>
 
-Response::Response() {
-}
+Response::Response(std::vector<ServerConfig> config): Rconfig(config) {}
 
-Response::~Response() {
-}
+Response::~Response() {}
 
 std::string Response::routing(std::string method, std::string url) {
-    Router router;
+    Router router(Rconfig);
     std::string response;
     std::string full_path;
     HttpMethod http_method = methodToEnum(method);
     t_routeConfig config = router.getRouteConfig(url);
 
-    // std::cout << "TEST TEST TEST TEST" << std::endl;
+    size_t i = 0;
+    while(i < Rconfig.size()) {
+        std::cout << "SERVER NAME NAME: ";
+        std::cout << Rconfig[i].server_names[i] << std::endl;
+        i++;
+    }
 
     if (!config.redirect_to.empty()) {
         response = "HTTP/1.1 301 Moved Permanently\r\n";

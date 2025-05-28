@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include "Request.hpp"
+#include "config_manager.hpp"
 
 /*
 HTTP Status Codes
@@ -37,12 +38,12 @@ enum StatusCode {
     InternalServerError = 500
 };
 
-enum HttpMethod {
-    GET,
-    POST,
-    DELETE,
-    UNKNOWN
-};
+// enum HttpMethod {
+//     GET,
+//     POST,
+//     DELETE,
+//     UNKNOWN
+// };
 
 typedef struct RouteConfig {
     std::vector<HttpMethod> allowed_methods;
@@ -59,10 +60,11 @@ class Response : public Request
     protected:
         std::string error_dir = "./www/error/";
         t_routeConfig route_config;
+        std::vector<ServerConfig> Rconfig;
         std::unordered_map<std::string, RouteHandler> routes;
 
     public:
-        Response();
+        Response(std::vector<ServerConfig> config);
         ~Response();
 
         std::string routing(std::string method, std::string url);

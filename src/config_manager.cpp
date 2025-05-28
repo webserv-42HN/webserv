@@ -93,6 +93,13 @@ std::vector<ServerConfig> ConfigManager::buildConfigs(const std::vector<ServerBl
   return configs;
 }
 
+HttpMethod stringToHttpMethod(const std::string& method) {
+    if (method == "GET") return HttpMethod::GET;
+    if (method == "POST") return HttpMethod::POST;
+    if (method == "DELETE") return HttpMethod::DELETE;
+    return HttpMethod::UNKNOWN; // Default to UNKNOWN for unsupported methods
+}
+
 ServerConfig ConfigManager::buildServerConfig(const ServerBlock& block) {
   ServerConfig config;
 
@@ -112,18 +119,20 @@ ServerConfig ConfigManager::buildServerConfig(const ServerBlock& block) {
       route.path = loc.path;
 
       for (const Directive& dir : loc.directives) {
-          if (dir.name == "root" && !dir.args.empty())
-              route.root = dir.args[0];
-          else if (dir.name == "default_file" && !dir.args.empty())
-              route.default_file = dir.args[0];
-          else if (dir.name == "autoindex" && !dir.args.empty())
-              route.autoindex = (dir.args[0] == "on");
-          else if (dir.name == "methods")
-              route.allowed_methods = dir.args;
-          else if (dir.name == "upload_directory" && !dir.args.empty())
-              route.upload_dir = dir.args[0];
-          else if (dir.name == "cgi" && dir.args.size() == 2)
-              route.cgi_handlers[dir.args[0]] = dir.args[1];
+        if (dir.name == "root" && !dir.args.empty())
+            route.root = dir.args[0];
+        else if (dir.name == "default_file" && !dir.args.empty())
+            route.default_file = dir.args[0];
+        else if (dir.name == "autoindex" && !dir.args.empty())
+            route.autoindex = (dir.args[0] == "on");
+        else if (dir.name == "methods")
+            for (const std::string& method : dir.args) {
+                route.allowed_methods.push_back(stringToHttpMethod(method));
+            }
+        else if (dir.name == "upload_directory" && !dir.args.empty())
+            route.upload_dir = dir.args[0];
+        else if (dir.name == "cgi" && dir.args.size() == 2)
+            route.cgi_handlers[dir.args[0]] = dir.args[1];
       }
 
       config.routes.push_back(route);
