@@ -76,6 +76,8 @@ t_routeConfig Router::convertToRouteConfig(const RouteConfigFromConfigFile& cfg)
             config.allowed_methods.push_back(POST);
         else if (method == "DELETE")
             config.allowed_methods.push_back(DELETE);
+        else if (method == "HEAD")
+            config.allowed_methods.push_back(HEAD);
         // Add other methods as needed
     }
     // config.allowed_methods = cfg.allowed_methods;  //copilot fix

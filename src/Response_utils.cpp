@@ -11,6 +11,7 @@ HttpMethod Response::methodToEnum(std::string method) {
     if (method == "GET") return GET;
     if (method == "POST") return POST;
     if (method == "DELETE") return DELETE;
+    if (method == "HEAD") return HEAD;
     return UNKNOWN; // Invalid method
 }
 

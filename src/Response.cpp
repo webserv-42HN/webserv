@@ -64,6 +64,9 @@ std::string Response::generatingResponse(HttpMethod method, std::string full_url
     case GET:
         response = getGetResponse(full_url, 200);
         break;
+    case HEAD:
+        response = getHeadResponse(full_url, 200);
+        break;
     case POST:
         response = getPostResponse(full_url);
         break;
@@ -150,4 +153,26 @@ std::string Response::getDeleteResponse(const std::string& filepath) {
 std::string Response::getErrorResponse(int statusCode) {
     std::string error_page = error_dir + std::to_string(statusCode) + "_error.html";
     return getGetResponse(error_page, statusCode);
+}
+
+
+std::string Response::getHeadResponse(const std::string& requested_path, int statusCode) {
+  // Check if file exists, same as in getGetResponse
+  std::ifstream file(requested_path, std::ifstream::binary);
+  if (!file.is_open())
+      return getErrorResponse(404);
+
+  // Get file size for Content-Length header
+  file.seekg(0, std::ios::end);
+  std::streampos size = file.tellg();
+  file.close();
+  
+  // Build headers-only response (no body)
+  std::stringstream res;
+  res << "HTTP/1.1 " << statusCode << " OK\r\n";
+  res << "Content-Type: " << getMimeType(requested_path) << "\r\n";
+  res << "Content-Length: " << size << "\r\n";
+  res << "\r\n";
+  
+  return res.str();
 }
