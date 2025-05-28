@@ -38,8 +38,9 @@ struct Directive {
 };
 
 struct LocationBlock {
-    std::string path;
-    std::vector<Directive> directives;
+  std::string path;
+  bool is_regex = false;  // Add this field
+  std::vector<Directive> directives;
 };
 
 struct ServerBlock {
@@ -50,10 +51,12 @@ struct ServerBlock {
 // Runtime configuration structures
 struct RouteConfigFromConfigFile {
     std::string path;
+    bool is_regex = false;     // Add this field to indicate if path is a regex
+    std::string regex_pattern; // Add this to store the actual regex pattern
     std::string root;
     std::string default_file;
     bool autoindex = false;
-    std::vector<HttpMethod> allowed_methods;
+    std::vector<std::string> allowed_methods;
     std::map<std::string, std::string> cgi_handlers;
     std::string upload_dir;
 };
