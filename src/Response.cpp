@@ -10,12 +10,43 @@ Response::Response(std::vector<ServerConfig> config): Rconfig(config) {}
 
 Response::~Response() {}
 
+bool Response::isCGIRequest(const std::string& url) {
+  return url.find("/cgi-bin/") != std::string::npos ||
+         url.find(".cgi") != std::string::npos ||
+         url.find(".py") != std::string::npos ||
+         url.find(".php") != std::string::npos;
+}
+
+
 std::string Response::routing(std::string method, std::string url) {
     Router router(Rconfig);
     std::string response;
     std::string full_path;
     HttpMethod http_method = methodToEnum(method);
     t_routeConfig config = router.getRouteConfig(url);
+
+    if (isCGIRequest(url)) {
+      // Extract query string if present
+      std::string query_string = "";
+      size_t query_pos = url.find('?');
+      if (query_pos != std::string::npos) {
+          query_string = url.substr(query_pos + 1);
+          url = url.substr(0, query_pos);
+      }
+      
+      // Build full path to the CGI script
+      full_path = config.root_dir + url;
+      
+      // Check if the method is allowed for this route
+      auto it = std::find(config.allowed_methods.begin(),
+                          config.allowed_methods.end(),
+                          http_method);
+      if (it == config.allowed_methods.end())
+          return getErrorResponse(405);
+          
+      // Execute the CGI script
+      return executeCGI(full_path, query_string, method);
+    }
 
     if (!config.redirect_to.empty()) {
         response = "HTTP/1.1 301 Moved Permanently\r\n";
@@ -55,6 +86,9 @@ std::string Response::generatingResponse(HttpMethod method, std::string full_url
         break;
     case DELETE:
         response = getDeleteResponse(full_url);
+        break;
+    case HEAD:
+        response = getHeadResponse(full_url, 200);
         break;
     case UNKNOWN:
         response = getErrorResponse(405);
@@ -137,4 +171,24 @@ std::string Response::getDeleteResponse(const std::string& filepath) {
 std::string Response::getErrorResponse(int statusCode) {
     std::string error_page = "./www/error/" + std::to_string(statusCode) + "_error.html";
     return getGetResponse(error_page, statusCode);
+}
+
+std::string Response::getHeadResponse(const std::string& requested_path, int statusCode) {
+  // Similar to GET but without body
+  std::ifstream file(requested_path, std::ifstream::binary);
+  if (!file.is_open())
+      return getErrorResponse(404);
+  
+  file.seekg(0, std::ios::end);
+  std::streampos size = file.tellg();
+  file.close();
+  
+  // Create response with headers only
+  std::stringstream res;
+  res << "HTTP/1.1 " << statusCode << " OK\r\n";
+  res << "Content-Type: " << getMimeType(requested_path) << "\r\n";
+  res << "Content-Length: " << size << "\r\n";
+  res << "\r\n";
+  
+  return res.str();
 }

@@ -117,7 +117,10 @@ ServerConfig ConfigManager::buildServerConfig(const ServerBlock& block) {
       else if (dir.name == "error_page" && dir.args.size() >= 2 && dir.args[0] == "404")
           config.error_page_404 = dir.args[1];
       else if (dir.name == "client_max_body_size" && !dir.args.empty())
+      {
           config.client_max_body_size = std::stoul(dir.args[0]);
+          std::cout << "TEST TEST TEST: " << config.client_max_body_size << std::endl;
+      }
   }
 
   for (const LocationBlock& loc : block.locations) {
@@ -139,7 +142,10 @@ ServerConfig ConfigManager::buildServerConfig(const ServerBlock& block) {
           else if (dir.name == "cgi" && dir.args.size() == 2)
               route.cgi_handlers[dir.args[0]] = dir.args[1];
           else if (dir.name == "client_max_body_size" && !dir.args.empty())
+          {
               route.client_max_body_size = std::stoul(dir.args[0]);
+              std::cout << "TEST TEST TEST 1111: " << route.client_max_body_size << std::endl;
+          }
         
       }
       route.client_max_body_size = config.client_max_body_size;

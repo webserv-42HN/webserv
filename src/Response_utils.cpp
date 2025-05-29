@@ -11,6 +11,7 @@ HttpMethod Response::methodToEnum(std::string method) {
     if (method == "GET") return GET;
     if (method == "POST") return POST;
     if (method == "DELETE") return DELETE;
+    if (method == "HEAD") return HEAD;
     return UNKNOWN; // Invalid method
 }
 
@@ -21,6 +22,7 @@ std::string Response::getStatusLine(int statusCode) {
         case 400: reason = "Bad Request"; break;
         case 404: reason = "Not Found"; break;
         case 500: reason = "Internal Server Error"; break;
+        case 405: reason = "Method Not Allowed"; break;
         default: reason = "Unknown"; break;
     }
     return "HTTP/1.1 " + std::to_string(statusCode) + " " + reason + "\r\n";
@@ -36,7 +38,7 @@ std::string Response::generateDirectoryListing(const std::string& path) {
         while ((entry = readdir(dir)) != NULL) {
             if (entry->d_name[0] != '.') {  // Skip hidden files
                 std::string filename = entry->d_name;
-                content += "<li><a href=\"/uploads/" + filename + "\">";
+                content += "<li><a href=\"/" + filename + "\">";
                 content += filename + "</a></li>";
             }
         }

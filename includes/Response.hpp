@@ -37,7 +37,8 @@ enum StatusCode {
     NotFound = 404,
     InternalServerError = 500,
     FileTooLarge = 413,
-    Forbidden = 403
+    Forbidden = 403,
+    MethodNotAllowed = 405
 };
 
 // enum HttpMethod {
@@ -77,6 +78,7 @@ class Response : public Request
         std::string getPostResponse(const std::string &path);
         std::string getDeleteResponse(const std::string &path);
         std::string getErrorResponse(int statusCode);
+        std::string getHeadResponse(const std::string& requested_path, int statusCode);
 
         std::string buildResponse(const std::string& body, int statusCode, const std::string& contentType);
         std::string getStatusLine(int statusCode);
@@ -92,6 +94,9 @@ class Response : public Request
         // size_t getContentLength() const;
         size_t getContentLength(const std::string &headers) const;
         std::string responseApplication(std::string body);
+
+        bool isCGIRequest(const std::string& url);
+        std::string executeCGI(const std::string& path, const std::string& query, const std::string& method);
 };
 
 #endif

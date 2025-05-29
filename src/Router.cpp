@@ -63,18 +63,24 @@ t_routeConfig Router::getRouteConfig(std::string url) {
 
 t_routeConfig Router::convertToRouteConfig(const RouteConfigFromConfigFile& cfg) {
     t_routeConfig config;
-
+    bool has_get = false;
     // Convert string methods to HttpMethod enums
     config.allowed_methods.clear();
     for (const auto& method : cfg.allowed_methods) {
-        if (method == "GET")
-            config.allowed_methods.push_back(GET);
+        if (method == "GET") {
+          config.allowed_methods.push_back(GET);
+          has_get = true;
+        }
         else if (method == "POST")
             config.allowed_methods.push_back(POST);
         else if (method == "DELETE")
             config.allowed_methods.push_back(DELETE);
+        else if (method == "HEAD")
+            config.allowed_methods.push_back(HEAD);
         // Add other methods as needed
     }
+    if (has_get && std::find(config.allowed_methods.begin(), config.allowed_methods.end(), HEAD) == config.allowed_methods.end())
+      config.allowed_methods.push_back(HEAD);
     // config.allowed_methods = cfg.allowed_methods;  //copilot fix
     config.root_dir = cfg.root;
     config.redirect_to = ""; // Set if needed
