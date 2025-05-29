@@ -25,13 +25,34 @@ bool ConfigManager::loadFromFile(const std::string& filename) {
       return false;
   }
   
-  std::stringstream buffer;
-  buffer << configFile.rdbuf();
-  std::string configContent = buffer.str();
+  // Read line by line and filter out commented lines
+  std::string line;
+  std::string filteredContent;
+  while (std::getline(configFile, line)) {
+      // Trim leading whitespace
+      size_t firstNonSpace = line.find_first_not_of(" \t");
+      
+      // Skip empty lines or lines that start with # after trimming
+      if (firstNonSpace == std::string::npos || line[firstNonSpace] == '#') {
+          continue;
+      }
+      
+      // For lines with inline comments, only keep the part before #
+      size_t commentPos = line.find('#');
+      if (commentPos != std::string::npos) {
+          line = line.substr(0, commentPos);
+          // If the line is now empty after removing the comment, skip it
+          if (line.find_first_not_of(" \t") == std::string::npos) {
+              continue;
+          }
+      }
+      
+      filteredContent += line + "\n";
+  }
   configFile.close();
   
   // Tokenize
-  ConfigTokenizer tokenizer(configContent);
+  ConfigTokenizer tokenizer(filteredContent);
   auto tokens = tokenizer.tokenize();
   
   // Extract token values
@@ -185,7 +206,8 @@ ConfigTokenizer::ConfigTokenizer(const std::string& input) : m_input(input), m_p
 
 std::vector<Token> ConfigTokenizer::tokenize() {
   std::vector<Token> tokens;
-  int lineNumber = 1;  // Track line numbers for better error reporting
+  int lineNumber = 1;
+  bool lineCommented = false;
 
   std::regex tokenRegex(
       R"((\s+)|(#.*$)|("([^"\\]|\\.)*")|([{};])|([^\s{};"#]+))", std::regex::ECMAScript);
@@ -193,6 +215,11 @@ std::vector<Token> ConfigTokenizer::tokenize() {
   std::smatch match;
 
   while (m_pos < m_input.size()) {
+      // Reset lineCommented flag at the start of each new line
+      if (m_pos == 0 || m_input[m_pos-1] == '\n') {
+        lineCommented = false;
+      }
+
       std::string remaining = m_input.substr(m_pos);
       if (std::regex_search(remaining, match, tokenRegex)) {
           std::string tokenStr = match.str();
@@ -200,19 +227,28 @@ std::vector<Token> ConfigTokenizer::tokenize() {
           for (char c : tokenStr) {
             if (c == '\n') lineNumber++;
           }
+          
+          // Move position forward by the token's position and length
+          m_pos += match.position();
+          
           if (match[1].matched) {
               // Skip whitespace
           } else if (match[2].matched) {
-              // tokens.push_back({TokenType::Comment, tokenStr});
-          } else if (match[3].matched) {
-              tokens.push_back({TokenType::String, tokenStr});
-          } else if (match[5].matched) {
-              tokens.push_back({TokenType::Symbol, tokenStr});
-          } else if (match[6].matched) {
-              tokens.push_back({TokenType::Identifier, tokenStr});
+              lineCommented = true;
+              // No need to add comment tokens
+          } else if (!lineCommented) {
+              // Only add tokens if the line is not commented
+              if (match[3].matched) {
+                  tokens.push_back({TokenType::String, tokenStr});
+              } else if (match[5].matched) {
+                  tokens.push_back({TokenType::Symbol, tokenStr});
+              } else if (match[6].matched) {
+                  tokens.push_back({TokenType::Identifier, tokenStr});
+              }
           }
-
-          m_pos += match.position() + match.length();
+          
+          // Always advance past the current token
+          m_pos += match.length();
       } else {
         std::cerr << "Error: Unexpected character at line " << lineNumber << std::endl;
         break;
