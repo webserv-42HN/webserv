@@ -11,67 +11,48 @@ Response::Response(std::vector<ServerConfig> config): Rconfig(config) {}
 Response::~Response() {}
 
 bool Response::isCGIRequest(const std::string& url) {
-  return url.find("/cgi-bin/") != std::string::npos ||
+  return url.find("/cgi/") != std::string::npos ||
          url.find(".cgi") != std::string::npos ||
          url.find(".py") != std::string::npos ||
          url.find(".php") != std::string::npos;
 }
 
-
 std::string Response::routing(std::string method, std::string url) {
     Router router(Rconfig);
-    std::string response;
-    std::string full_path;
-    HttpMethod http_method = methodToEnum(method);
+    if (!url.empty() && url.back() != '/')
+        url += '/';
     t_routeConfig config = router.getRouteConfig(url);
+    std::string full_path = config.root_dir + url;
 
     if (isCGIRequest(url)) {
-      // Extract query string if present
-      std::string query_string = "";
-      size_t query_pos = url.find('?');
-      if (query_pos != std::string::npos) {
-          query_string = url.substr(query_pos + 1);
-          url = url.substr(0, query_pos);
-      }
-      
-      // Build full path to the CGI script
-      full_path = config.root_dir + url;
-      
-      // Check if the method is allowed for this route
-      auto it = std::find(config.allowed_methods.begin(),
-                          config.allowed_methods.end(),
-                          http_method);
-      if (it == config.allowed_methods.end())
-          return getErrorResponse(405);
-          
-      // Execute the CGI script
-      return executeCGI(full_path, query_string, method);
-    }
-
-    if (!config.redirect_to.empty()) {
-        response = "HTTP/1.1 301 Moved Permanently\r\n";
-        response += "Location: " + config.redirect_to + "\r\n\r\n";
-        return response;
-    }
-    auto it = std::find(config.allowed_methods.begin(),
-                        config.allowed_methods.end(),
-                        http_method);
-    if (it == config.allowed_methods.end())
-        return getErrorResponse(405);
-    full_path = config.root_dir + url;
-    if (isDirectory(full_path) && method == "GET") {
-        std::string index_path = config.root_dir + url + "/index.html";
-        std::ifstream index_file(index_path);
-        if (index_file.good()) {
-            index_file.close();
-            return getGetResponse(index_path, 200);
+        // Extract query string if present
+        std::string query_string = "";
+        size_t query_pos = url.find('?');
+        if (query_pos != std::string::npos) {
+            query_string = url.substr(query_pos + 1);
+            url = url.substr(0, query_pos);
         }
-        if (config.autoindex)
-            return generateDirectoryListing(full_path, url);
-        
-        return getErrorResponse(404);
+        return executeCGI(full_path, query_string, method);
     }
-    return generatingResponse(http_method, full_path);
+    if (isDirectory(full_path) && method == "GET") {
+        // Check if default_file is specified
+        if (!config.default_file.empty()) {
+            std::string index_path = full_path + config.default_file;
+            std::cout << "DEBUG: INDEX PATH: " << index_path << std::endl;
+            std::ifstream index_file(index_path);
+            if (index_file.good()) {
+                index_file.close();
+                return getGetResponse(index_path, 200);
+            }
+        }
+        if (config.autoindex) {
+            return generateDirectoryListing(full_path, url);
+        }
+        return getErrorResponse(404); // No default file and autoindex is off
+    }
+    if (full_path.back() == '/')
+        full_path.pop_back(); // Remove trailing slash for file access
+    return generatingResponse(methodToEnum(method), full_path);
 }
 
 std::string Response::generatingResponse(HttpMethod method, std::string full_url) {
@@ -159,6 +140,7 @@ std::string Response::getPostResponse(const std::string& url) {
 
 std::string Response::getDeleteResponse(const std::string& filepath) {
     struct stat st;
+    std::cout << "DEBUG: Deleting file: " << filepath << std::endl;
     if (stat(filepath.c_str(), &st) != 0) {
         return getErrorResponse(404); // Not found
     }

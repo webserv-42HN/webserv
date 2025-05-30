@@ -127,6 +127,37 @@ std::vector<ServerConfig> ConfigManager::buildConfigs(const std::vector<ServerBl
   return configs;
 }
 
+// convert a LocationBlock into a RouteConfigFromConfigFile
+RouteConfigFromConfigFile buildRouteConfigFromLocation(const LocationBlock& loc, size_t server_client_max_size) {
+  RouteConfigFromConfigFile config;
+  config.path = loc.path;
+  config.is_regex = loc.is_regex;
+
+  // Default fallback from server level
+  config.client_max_body_size = server_client_max_size;
+
+  for (const Directive& directive : loc.directives) {
+      if (directive.name == "root" && !directive.args.empty()) {
+          config.root = directive.args[0];
+      } else if (directive.name == "default_file" && !directive.args.empty()) {
+          config.default_file = directive.args[0];
+      } else if (directive.name == "autoindex" && !directive.args.empty()) {
+          config.autoindex = (directive.args[0] == "on");
+      } else if (directive.name == "methods") {
+          config.allowed_methods = directive.args;
+      } else if (directive.name == "client_max_body_size" && !directive.args.empty()) {
+          config.client_max_body_size = std::stoul(directive.args[0]);
+      } else if (directive.name == "upload_dir" && !directive.args.empty()) {
+          config.upload_dir = directive.args[0];
+      } else if (directive.name == "cgi_handler" && directive.args.size() == 2) {
+          config.cgi_handlers[directive.args[0]] = directive.args[1];  // e.g. .py → /usr/bin/python3
+      }
+      // Add more directive mappings as needed
+  }
+
+  return config;
+}
+
 ServerConfig ConfigManager::buildServerConfig(const ServerBlock& block) {
   ServerConfig config;
 
@@ -138,11 +169,12 @@ ServerConfig ConfigManager::buildServerConfig(const ServerBlock& block) {
       else if (dir.name == "error_page" && dir.args.size() >= 2 && dir.args[0] == "404")
           config.error_page_404 = dir.args[1];
       else if (dir.name == "client_max_body_size" && !dir.args.empty())
-      {
           config.client_max_body_size = std::stoul(dir.args[0]);
-          std::cout << "TEST TEST TEST: " << config.client_max_body_size << std::endl;
-      }
   }
+  // for (const LocationBlock& loc : block.locations) {
+  //   RouteConfigFromConfigFile route = buildRouteConfigFromLocation(loc, config.client_max_body_size);
+  //   config.routes.push_back(route);
+  // }
 
   for (const LocationBlock& loc : block.locations) {
       RouteConfigFromConfigFile route;
@@ -153,7 +185,10 @@ ServerConfig ConfigManager::buildServerConfig(const ServerBlock& block) {
           if (dir.name == "root" && !dir.args.empty())
               route.root = dir.args[0];
           else if (dir.name == "default_file" && !dir.args.empty())
+          {
+              std::cout << "TEST TEST TEST: " << dir.args[0] << std::endl;
               route.default_file = dir.args[0];
+          }
           else if (dir.name == "autoindex" && !dir.args.empty())
               route.autoindex = (dir.args[0] == "on");
           else if (dir.name == "methods")
@@ -163,11 +198,7 @@ ServerConfig ConfigManager::buildServerConfig(const ServerBlock& block) {
           else if (dir.name == "cgi" && dir.args.size() == 2)
               route.cgi_handlers[dir.args[0]] = dir.args[1];
           else if (dir.name == "client_max_body_size" && !dir.args.empty())
-          {
               route.client_max_body_size = std::stoul(dir.args[0]);
-              std::cout << "TEST TEST TEST 1111: " << route.client_max_body_size << std::endl;
-          }
-        
       }
       route.client_max_body_size = config.client_max_body_size;
       config.routes.push_back(route);

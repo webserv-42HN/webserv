@@ -27,9 +27,9 @@ bool isScriptExtension(const std::string& path) {
 std::string Response::executeCGI(const std::string& path, const std::string& query, const std::string& method) {
     // Check if the file exists and is executable
     if (!isCGIScript(path) && !isScriptExtension(path)) {
+        std::cout << "DEBUG1: Executing CGI script at path: " << path << std::endl;
         return getErrorResponse(404);
     }
-
     int pipe_in[2];  // Parent writes to child (CGI input)
     int pipe_out[2]; // Child writes to parent (CGI output)
 
@@ -96,12 +96,10 @@ std::string Response::executeCGI(const std::string& path, const std::string& que
             envp[i] = strdup(env_strings[i].c_str());
         }
         envp[env_strings.size()] = NULL;
-
         // Execute the CGI script
         char* argv[2];
         argv[0] = strdup(path.c_str());
         argv[1] = NULL;
-
         execve(path.c_str(), argv, envp);
 
         // If execve returns, there was an error

@@ -28,7 +28,7 @@ bool Response::handleFileUpload(const std::string& path, const std::string& body
         // Strip possible trailing \r\n
         if (file_content.size() >= 2 && file_content.substr(file_content.size() - 2) == "\r\n")
             file_content = file_content.substr(0, file_content.size() - 2);
-        std::string full_path = path + "/" + filename;
+        std::string full_path = path + filename;
         std::cout << "Saving file: " << full_path << std::endl;
         std::ofstream outfile(full_path, std::ios::binary);
         if (!outfile) {
