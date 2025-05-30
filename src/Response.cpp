@@ -19,21 +19,56 @@ bool Response::isCGIRequest(const std::string& url) {
 
 std::string Response::routing(std::string method, std::string url) {
     Router router(Rconfig);
-    if (!url.empty() && url.back() != '/')
+    // Check if it's a CGI request before adding a trailing slash
+    bool is_cgi = isCGIRequest(url);
+
+    // Only add trailing slash for non-CGI URLs that don't already have one
+    if (!is_cgi && !url.empty() && url.back() != '/') {
         url += '/';
+    }
     t_routeConfig config = router.getRouteConfig(url);
     std::string full_path = config.root_dir + url;
 
-    if (isCGIRequest(url)) {
-        // Extract query string if present
-        std::string query_string = "";
-        size_t query_pos = url.find('?');
-        if (query_pos != std::string::npos) {
-            query_string = url.substr(query_pos + 1);
-            url = url.substr(0, query_pos);
-        }
-        return executeCGI(full_path, query_string, method);
-    }
+    if (is_cgi) {
+      // First check if the path is a directory
+      if (isDirectory(full_path)) {
+          // Handle CGI directory similar to regular directories
+          if (!config.default_file.empty()) {
+              std::string index_path = full_path + config.default_file;
+              std::cout << "DEBUG: CGI INDEX PATH: " << index_path << std::endl;
+              
+              // Check if the default file exists
+              std::ifstream index_file(index_path);
+              if (index_file.good()) {
+                  index_file.close();
+                  // Extract query string if present
+                  std::string query_string = "";
+                  size_t query_pos = url.find('?');
+                  if (query_pos != std::string::npos) {
+                      query_string = url.substr(query_pos + 1);
+                      url = url.substr(0, query_pos);
+                  }
+                  // Execute the default file as CGI
+                  return executeCGI(index_path, query_string, method);
+              }
+          }
+          
+          // If no default file or it doesn't exist, show directory listing or 404
+          if (config.autoindex) {
+              return generateDirectoryListing(full_path, url);
+          }
+          return getErrorResponse(404); // No default file and autoindex is off
+      }
+      
+      // Not a directory, process as normal CGI
+      std::string query_string = "";
+      size_t query_pos = url.find('?');
+      if (query_pos != std::string::npos) {
+          query_string = url.substr(query_pos + 1);
+          url = url.substr(0, query_pos);
+      }
+      return executeCGI(full_path, query_string, method);
+  }
     if (isDirectory(full_path) && method == "GET") {
         // Check if default_file is specified
         if (!config.default_file.empty()) {

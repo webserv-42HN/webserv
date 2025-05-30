@@ -1,4 +1,5 @@
 #include "../includes/Response.hpp"
+#include "../includes/Server.hpp"
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
@@ -97,10 +98,18 @@ std::string Response::executeCGI(const std::string& path, const std::string& que
         }
         envp[env_strings.size()] = NULL;
         // Execute the CGI script
-        char* argv[2];
-        argv[0] = strdup(path.c_str());
-        argv[1] = NULL;
-        execve(path.c_str(), argv, envp);
+        char* argv[3]; // Increase size to 3
+        if (path.find(".py") != std::string::npos) {
+            argv[0] = strdup("/usr/bin/python3"); // Use the interpreter path
+            argv[1] = strdup(path.c_str()); // Script path becomes argument
+            argv[2] = NULL;
+            execve(argv[0], argv, envp); // Execute the interpreter
+        } else {
+            // For other scripts, try direct execution
+            argv[0] = strdup(path.c_str());
+            argv[1] = NULL;
+            execve(path.c_str(), argv, envp);
+        }
 
         // If execve returns, there was an error
         perror("execve");
@@ -111,124 +120,21 @@ std::string Response::executeCGI(const std::string& path, const std::string& que
     close(pipe_in[0]);  // Close read end of input pipe
     close(pipe_out[1]); // Close write end of output pipe
 
-    // Send request body to CGI script if it's a POST request
+    // Register with the main server poll loop instead of local polling
+    CGIState state = {pid, pipe_in[1], pipe_out[0], body, "", Server::current_client_fd, false};
+    Server::cgi_states[pipe_out[0]] = state;
+    
+    // Add stdout pipe to poll for reading
+    Server::poll_fds.push_back({pipe_out[0], POLLIN, 0});
+    
+    // Add stdin pipe to poll for writing if there's data to send
     if (method == "POST" && !body.empty()) {
-        // Use poll to handle writing to pipe
-        struct pollfd write_fd = {pipe_in[1], POLLOUT, 0};
-        size_t bytes_written = 0;
-        
-        while (bytes_written < body.size()) {
-            int poll_result = poll(&write_fd, 1, 5000); // 5 second timeout
-            
-            if (poll_result < 0) {
-                perror("poll");
-                break;
-            }
-            
-            if (poll_result > 0 && (write_fd.revents & POLLOUT)) {
-                ssize_t result = write(pipe_in[1], body.c_str() + bytes_written, 
-                                       body.size() - bytes_written);
-                if (result < 0) {
-                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                        continue; // Try again
-                    }
-                    perror("write");
-                    break;
-                }
-                bytes_written += result;
-            }
-        }
+        Server::poll_fds.push_back({pipe_in[1], POLLOUT, 0});
+    } else {
+        // Close stdin pipe if no data to send
+        close(pipe_in[1]);
     }
     
-    // Close write pipe as we're done sending data
-    close(pipe_in[1]);
-
-    // Read CGI script output using poll
-    std::string cgi_output;
-    char buffer[4096];
-    bool reading = true;
-    struct pollfd read_fd = {pipe_out[0], POLLIN, 0};
-    
-    while (reading) {
-        int poll_result = poll(&read_fd, 1, 5000); // 5 second timeout
-        
-        if (poll_result < 0) {
-            perror("poll");
-            break;
-        }
-        
-        if (poll_result == 0) {
-            // Timeout
-            break;
-        }
-        
-        if (poll_result > 0) {
-            if (read_fd.revents & POLLIN) {
-                ssize_t bytes_read = read(pipe_out[0], buffer, sizeof(buffer) - 1);
-                if (bytes_read > 0) {
-                    buffer[bytes_read] = '\0';
-                    cgi_output.append(buffer, bytes_read);
-                } else if (bytes_read == 0) {
-                    // End of file
-                    reading = false;
-                } else {
-                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                        continue; // Try again
-                    }
-                    perror("read");
-                    break;
-                }
-            } else if (read_fd.revents & (POLLHUP | POLLERR | POLLNVAL)) {
-                // Pipe closed or error
-                reading = false;
-            }
-        }
-    }
-    
-    close(pipe_out[0]);
-    
-    // Wait for child process to finish
-    int status;
-    waitpid(pid, &status, 0);
-    
-    if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-        std::cerr << "CGI script exited with status " << WEXITSTATUS(status) << std::endl;
-        return getErrorResponse(500);
-    }
-    
-    // Process CGI output
-    // Check if the CGI script returned proper headers
-    size_t header_end = cgi_output.find("\r\n\r\n");
-    if (header_end == std::string::npos) {
-        // No headers found, assume it's just the body with content-type text/html
-        return buildResponse(cgi_output, 200, "text/html");
-    }
-    
-    // Extract headers and body
-    std::string headers = cgi_output.substr(0, header_end);
-    std::string body = cgi_output.substr(header_end + 4);
-    
-    // Look for Status header
-    int status_code = 200;
-    std::string content_type = "text/html";
-    
-    std::istringstream header_stream(headers);
-    std::string line;
-    while (std::getline(header_stream, line)) {
-        if (line.empty() || line == "\r") continue;
-        
-        // Remove trailing \r if present
-        if (!line.empty() && line[line.size()-1] == '\r')
-            line.erase(line.size()-1);
-        
-        if (line.find("Status:") == 0) {
-            status_code = std::stoi(line.substr(7));
-        } else if (line.find("Content-Type:") == 0) {
-            content_type = line.substr(13);
-            // Trim leading spaces
-            content_type.erase(0, content_type.find_first_not_of(" \t"));
-        }
-    }
-    
-    return buildResponse(body, status_code, content_type);
+    // Return empty response - the real response will be sent later
+    return "";
 }

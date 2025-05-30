@@ -13,17 +13,33 @@ struct ClientSession {
 	int content_length = 0;
 };
 
+// Add this struct to track CGI process state
+struct CGIState {
+  pid_t pid;              // CGI process ID
+  int stdin_fd;           // Pipe for writing to CGI stdin
+  int stdout_fd;          // Pipe for reading from CGI stdout
+  std::string input_buffer; // Request body to send to CGI
+  std::string output_buffer; // Accumulated CGI output
+  int client_fd;          // Associated client file descriptor
+  bool done;              // Whether CGI has finished
+};
+
+
 class Server {
 	private:
 		std::vector<ServerConfig> config;
 		std::vector<int> ss_Fds; //delete later, it's gonna be a map
 		std::map<int, ServerConfig> serverSockets;
 		std::map<int, ServerConfig> clientConfigs;
-		std::vector<struct pollfd> poll_fds;
+		// std::vector<struct pollfd> poll_fds;
 		std::vector<int> uniqPorts;
 		std::map<int, ClientSession> client_sessions;
 
 	public:
+    static std::vector<struct pollfd> poll_fds;
+    static std::map<int, CGIState> cgi_states; // Keyed by stdout_fd
+    static int current_client_fd; // Set in main loop before handling request
+
 		Server(std::vector<ServerConfig> config);
 		// ~Server();
 
@@ -41,6 +57,8 @@ class Server {
 		void handleClientData(int client_fd);
 		void handleClientWrite(int client_fd);
 		void closeClient(int client_fd);
+
+    std::string processCGIOutput(const std::string& output);
 
 		static bool running;
 		std::unordered_map<int, std::string> responses;

@@ -12,6 +12,10 @@
 
 #define BUF_SIZE 8194
 
+std::vector<struct pollfd> Server::poll_fds;
+std::map<int, CGIState> Server::cgi_states;
+int Server::current_client_fd = -1;
+
 volatile sig_atomic_t gSignal = 1;
 
 bool Server::running = true;
@@ -39,30 +43,125 @@ void stopLoop(int) {
 }
 
 void Server::mainLoop() {
-	// std::cout << "DEBUG: main LOOp" << std::endl;
-	while (running) {
-		int poll_count = poll(poll_fds.data(), poll_fds.size(), 1000);
-		if (poll_count < 0) {
-			if (errno == EINTR)
-				continue;
-			perror("poll");
-			break;
-		}
+  while (running) {
+      int poll_count = poll(poll_fds.data(), poll_fds.size(), 1000);
+      if (poll_count < 0) {
+          if (errno == EINTR)
+              continue;
+          perror("poll");
+          break;
+      }
 
-		for (size_t i = 0; i < poll_fds.size(); i++) {
-			if (poll_fds[i].revents & POLLIN) {
-				if (std::find(ss_Fds.begin(), ss_Fds.end(), poll_fds[i].fd) != ss_Fds.end()) {
-					handleNewConnection(poll_fds[i].fd);
-				} else {
-					handleClientData(poll_fds[i].fd);
-				}
-			}
+      for (size_t i = 0; i < poll_fds.size(); i++) {
+          int fd = poll_fds[i].fd;
+          
+          // Skip if no events
+          if (poll_fds[i].revents == 0)
+              continue;
+          
+          // Check if this is a CGI stdout pipe
+          auto cgi_it = cgi_states.find(fd);
+          if (cgi_it != cgi_states.end()) {
+              // Handle CGI I/O
+              if (poll_fds[i].revents & POLLIN) {
+                  // Reading from CGI stdout
+                  char buf[4096];
+                  ssize_t n = read(fd, buf, sizeof(buf) - 1);
+                  
+                  if (n > 0) {
+                      // Accumulate output
+                      cgi_it->second.output_buffer.append(buf, n);
+                  } else if (n == 0) {
+                      // CGI process finished writing
+                      int client_fd = cgi_it->second.client_fd;
+                      
+                      // Check if the client is still connected
+                      bool client_exists = false;
+                      for (const auto& pfd : poll_fds) {
+                          if (pfd.fd == client_fd) {
+                              client_exists = true;
+                              break;
+                          }
+                      }
 
-			if (poll_fds[i].revents & POLLOUT) {
-				handleClientWrite(poll_fds[i].fd);
-			}
-		}
-	}
+                      if (client_exists) {
+                        // Process output and create response
+                        std::string response = processCGIOutput(cgi_it->second.output_buffer);
+                        responses[client_fd] = response;
+                        
+                        // Enable writing for client
+                        for (auto& pfd : poll_fds) {
+                            if (pfd.fd == client_fd) {
+                                pfd.events = POLLOUT;
+                                pfd.revents = 0;
+                                break;
+                            }
+                        }
+                      }
+                      
+                      // Clean up CGI resources
+                      if (cgi_it->second.stdin_fd > 0)
+                          close(cgi_it->second.stdin_fd);
+                      close(fd); // close stdout pipe
+                      
+                      // Remove from poll_fds
+                      poll_fds.erase(poll_fds.begin() + i);
+                      i--; // Adjust index after removal
+                      
+                      // // Enable writing for client
+                      // for (auto& pfd : poll_fds) {
+                      //     if (pfd.fd == client_fd) {
+                      //         pfd.events = POLLOUT;
+                      //         pfd.revents = 0;
+                      //         break;
+                      //     }
+                      // }
+                      
+                      // Remove CGI state
+                      cgi_states.erase(fd);
+                  } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                      perror("read CGI pipe");
+                  }
+                  continue;
+              }
+              
+              // Handle writing to CGI stdin
+              if (fd == cgi_it->second.stdin_fd && (poll_fds[i].revents & POLLOUT)) {
+                  std::string& input = cgi_it->second.input_buffer;
+                  if (!input.empty()) {
+                      ssize_t n = write(fd, input.c_str(), input.size());
+                      if (n > 0) {
+                          input.erase(0, n);
+                      } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                          perror("write CGI pipe");
+                      }
+                  }
+                  
+                  // If done writing, close pipe
+                  if (input.empty()) {
+                      close(fd);
+                      cgi_it->second.stdin_fd = -1;
+                      
+                      // Remove from poll_fds
+                      poll_fds.erase(poll_fds.begin() + i);
+                      i--; // Adjust index
+                  }
+                  continue;
+              }
+          }
+          
+          // Handle regular socket I/O
+          if (poll_fds[i].revents & POLLIN) {
+              if (std::find(ss_Fds.begin(), ss_Fds.end(), fd) != ss_Fds.end()) {
+                  handleNewConnection(fd);
+              } else {
+                  handleClientData(fd);
+              }
+          } else if (poll_fds[i].revents & POLLOUT) {
+              handleClientWrite(fd);
+          }
+      }
+  }
 }
 
 void Server::handleNewConnection(int listen_id) {
@@ -78,6 +177,7 @@ void Server::handleNewConnection(int listen_id) {
 }
 
 void Server::handleClientData(int client_fd) {
+  current_client_fd = client_fd;
 	Response res(config);
 	std::string headers;
 
@@ -139,10 +239,24 @@ void Server::handleClientWrite(int client_fd) {
 	auto it = responses.find(client_fd);
 	if (it == responses.end()) {
 		std::cerr << "No response found for client " << client_fd << std::endl;
-		closeClient(client_fd);
+		// closeClient(client_fd);
 		return ;
 	}
 	const std::string& response = it->second;
+  if (response.empty()) {
+    // For CGI requests that return empty responses, keep the connection open
+    responses.erase(client_fd);
+    
+    // Reset to POLLIN to allow for further requests
+    for (auto& pfd : poll_fds) {
+        if (pfd.fd == client_fd) {
+            pfd.events = POLLIN;
+            pfd.revents = 0;
+            break;
+        }
+    }
+    return;
+  }
 	ssize_t bytes_sent = send(client_fd, response.c_str(), response.length(), 0);
 	if (bytes_sent <= 0) {
 		perror("send");
@@ -152,7 +266,29 @@ void Server::handleClientWrite(int client_fd) {
 	}
 	// std::cout << "Sent response to client :\n" << response << std::endl;
 	responses.erase(client_fd);
-	closeClient(client_fd);
+
+	 // Check if this client is waiting for CGI response
+    bool is_cgi_client = false;
+    for (const auto& pair : cgi_states) {
+        if (pair.second.client_fd == client_fd) {
+            is_cgi_client = true;
+            break;
+        }
+    }
+    
+    // Only close the client if it's not waiting for CGI output
+    if (!is_cgi_client) {
+        closeClient(client_fd);
+    } else {
+        // For CGI clients, reset to POLLIN for possible future data
+        for (auto& pfd : poll_fds) {
+            if (pfd.fd == client_fd) {
+                pfd.events = POLLIN;
+                pfd.revents = 0;
+                break;
+            }
+        }
+    }
 }
 
 void Server::closeClient(int client_fd){
@@ -253,8 +389,35 @@ for (std::vector<struct pollfd>::iterator it = poll_fds.begin(); it != poll_fds.
 
 }
 
+std::string Server::processCGIOutput(const std::string& output) {
+  size_t header_end = output.find("\r\n\r\n");
+  if (header_end == std::string::npos) {
+      // No headers, assume HTML content
+      Response res(config);
+      return res.buildResponse(output, 200, "text/html");
+  }
 
+  std::string headers = output.substr(0, header_end);
+  std::string body = output.substr(header_end + 4);
+  int status_code = 200;
+  std::string content_type = "text/html";
 
+  std::istringstream header_stream(headers);
+  std::string line;
+  while (std::getline(header_stream, line)) {
+      if (line.empty() || line == "\r") continue;
+      if (!line.empty() && line.back() == '\r') line.pop_back();
+      if (line.find("Status:") == 0) {
+          status_code = std::stoi(line.substr(7));
+      } else if (line.find("Content-Type:") == 0) {
+          content_type = line.substr(13);
+          content_type.erase(0, content_type.find_first_not_of(" \t"));
+      }
+  }
+  
+  Response res(config);
+  return res.buildResponse(body, status_code, content_type);
+}
 
 
 
