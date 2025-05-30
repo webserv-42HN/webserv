@@ -87,6 +87,7 @@ void Server::mainLoop() {
                       if (client_exists) {
                         // Process output and create response
                         std::string response = processCGIOutput(cgi_it->second.output_buffer);
+                        std::cout << "DEBUG: CGI output received, length: " << cgi_it->second.output_buffer.size() << std::endl;
                         responses[client_fd] = response;
                         
                         // Enable writing for client
@@ -103,7 +104,11 @@ void Server::mainLoop() {
                       if (cgi_it->second.stdin_fd > 0)
                           close(cgi_it->second.stdin_fd);
                       close(fd); // close stdout pipe
-                      
+                      waitpid(cgi_it->second.pid, NULL, 0); // Prevent zombie processes
+
+                      // Remove from cgi_states before modifying poll_fds
+                      cgi_states.erase(fd);
+
                       // Remove from poll_fds
                       poll_fds.erase(poll_fds.begin() + i);
                       i--; // Adjust index after removal
