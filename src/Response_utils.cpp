@@ -28,18 +28,45 @@ std::string Response::getStatusLine(int statusCode) {
     return "HTTP/1.1 " + std::to_string(statusCode) + " " + reason + "\r\n";
 }
 
-std::string Response::generateDirectoryListing(const std::string& path) {
-    std::string content = "<html><head><title>Index of " + path + "</title></head><body>";
-    content += "<h1>Index of " + path + "</h1><hr><ul class=\"file-list\">";
+// std::string Response::generateDirectoryListing(const std::string& path) {
+//     std::string content = "<html><head><title>Index of " + path + "</title></head><body>";
+//     content += "<h1>Index of " + path + "</h1><hr><ul class=\"file-list\">";
 
-    DIR* dir = opendir(path.c_str());
+//     DIR* dir = opendir(path.c_str());
+//     if (dir != NULL) {
+//         struct dirent* entry;
+//         while ((entry = readdir(dir)) != NULL) {
+//             if (entry->d_name[0] != '.') {  // Skip hidden files
+//                 std::string filename = entry->d_name;
+//                 content += "<li><a href=\"/" + filename + "\">";
+//                 content += filename + "</a></li>";
+//             }
+//         }
+//         closedir(dir);
+//     }
+
+//     content += "</ul><hr></body></html>";
+//     return buildResponse(content, 200, content_type);
+// }
+
+std::string Response::generateDirectoryListing(const std::string& fsPath, const std::string& urlPath) {
+    std::string content = "<html><head><title>Index of " + urlPath + "</title></head><body>";
+    content += "<h1>Index of " + urlPath + "</h1><hr><ul class=\"file-list\">";
+
+    DIR* dir = opendir(fsPath.c_str());
     if (dir != NULL) {
         struct dirent* entry;
         while ((entry = readdir(dir)) != NULL) {
             if (entry->d_name[0] != '.') {  // Skip hidden files
                 std::string filename = entry->d_name;
-                content += "<li><a href=\"/" + filename + "\">";
-                content += filename + "</a></li>";
+
+                std::string fileUrl = urlPath;
+                if (fileUrl.back() != '/') {
+                    fileUrl += '/';
+                }
+                fileUrl += filename;
+
+                content += "<li><a href=\"" + fileUrl + "\">" + filename + "</a></li>";
             }
         }
         closedir(dir);

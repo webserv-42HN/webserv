@@ -67,7 +67,7 @@ std::string Response::routing(std::string method, std::string url) {
             return getGetResponse(index_path, 200);
         }
         if (config.autoindex)
-            return generateDirectoryListing(full_path);
+            return generateDirectoryListing(full_path, url);
         
         return getErrorResponse(404);
     }

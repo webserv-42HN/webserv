@@ -83,7 +83,7 @@ class Response : public Request
         std::string buildResponse(const std::string& body, int statusCode, const std::string& contentType);
         std::string getStatusLine(int statusCode);
         HttpMethod methodToEnum(std::string method);
-        std::string generateDirectoryListing(const std::string& path);
+        std::string generateDirectoryListing(const std::string& path, const std::string& url);
         bool isDirectory(const std::string& path);
 
         bool handleFileUpload(const std::string& path,
