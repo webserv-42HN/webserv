@@ -177,11 +177,10 @@ void Server::handleClientData(int client_fd) {
         closeClient(client_fd);
         return;
     }
-
     ClientSession& session = client_sessions[client_fd];
     if (!processHeaders(session))
         return; // wait for more data
-    
+
     if (isFullRequestReceived(session))
         processRequest(client_fd, session);
 }

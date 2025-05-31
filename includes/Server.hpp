@@ -84,6 +84,7 @@ class Server {
 												const std::string& host,
 												int port);
 		int getPortFromHeaders(const std::string& headers);
+		int getListeningPortForClient(int client_fd);
 		bool receiveData(int client_fd);
 		bool processHeaders(ClientSession& session);
 		bool isFullRequestReceived(const ClientSession& session);

@@ -9,7 +9,6 @@ std::string Server::getHostFromHeaders(const std::string& headers) {
     size_t end = headers.find_first_of("\r\n", start);
     std::string host = headers.substr(start, end - start);
 
-    // Remove port if present (e.g., "localhost:8081" -> "localhost")
     size_t colon = host.find(':');
     if (colon != std::string::npos) {
         host = host.substr(0, colon);
@@ -18,36 +17,39 @@ std::string Server::getHostFromHeaders(const std::string& headers) {
 }
 
 const ServerConfig* Server::getServerConfigByHost(const std::vector<ServerConfig>& configs,
-                                            const std::string& host, int port) {
-    for (size_t i = 0; i < configs.size(); ++i) {
-        if (configs[i].port == port) {
-            for (size_t j = 0; j < configs[i].server_names.size(); ++j) {
-                if (configs[i].server_names[j] == host)
-                    return &configs[i];
+                                                  const std::string& host, int port) {
+    // Scenario 1: Host and Port match
+    if (!host.empty()) {
+        for (size_t i = 0; i < configs.size(); ++i) {
+            if (configs[i].port == port) {
+                for (size_t j = 0; j < configs[i].server_names.size(); ++j) {
+                    if (configs[i].server_names[j] == host) {
+                        return &configs[i]; // Exact match found
+                    }
+                    else
+                        return nullptr;
+                }
             }
         }
+        return &configs[0]; // Host provided but no match found
     }
-    // Fallback: return first config for this port if no host matches
     for (size_t i = 0; i < configs.size(); ++i) {
-        if (configs[i].port == port)
-            return &configs[i];
+        if (configs[i].port == port) {
+            return &configs[i]; // Fallback to first matching port config
+        }
     }
-    return nullptr;
+    return nullptr; // No config matches port
 }
 
-int Server::getPortFromHeaders(const std::string& headers) {
-    size_t pos = headers.find("Host:");
-    if (pos == std::string::npos) {
-        return -1; // No Host header found
+int Server::getListeningPortForClient(int client_fd) {
+    struct sockaddr_in addr;
+    socklen_t addr_len = sizeof(addr);
+    
+    if (getsockname(client_fd, (struct sockaddr*)&addr, &addr_len) == -1) {
+        perror("getsockname failed");
+        return -1; // error indicator
     }
-    size_t start = headers.find_first_not_of(" \t", pos + 5);
-    size_t end = headers.find_first_of("\r\n", start);
-    std::string host_port = headers.substr(start, end - start);
-
-    // Extract port if present
-    size_t colon = host_port.find(':');
-    if (colon != std::string::npos) {
-        return std::stoi(host_port.substr(colon + 1));
-    }
-    return 80; // Default HTTP port
+    // ntohs converts network byte order to host byte order
+    int port = ntohs(addr.sin_port);
+    return port;
 }

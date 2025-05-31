@@ -42,10 +42,11 @@ void Server::processRequest(int client_fd, ClientSession& session) {
     std::string response;
     Response res(config);
     std::string host = getHostFromHeaders(header_str);
-    int port = getPortFromHeaders(header_str);
+    int port = getListeningPortForClient(client_fd);
     const ServerConfig* server_cfg = getServerConfigByHost(config, host, port);
 
-    if (!server_cfg && !host.empty()) {
+
+    if (!server_cfg && host != "localhost") {
         response = res.getErrorResponse(404); // Not Found
         responses[client_fd] = response;
         client_sessions.erase(client_fd);
