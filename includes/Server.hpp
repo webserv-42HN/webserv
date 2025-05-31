@@ -4,8 +4,22 @@
 #include <poll.h>
 #include <unordered_map>
 #include <map>
-#include "config_manager.hpp"
 #include <fcntl.h>
+#include <iostream>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <cstring>
+#include <signal.h>
+#include <cstdio>
+#include <cstdlib>
+#include <sys/wait.h>
+
+#include "../includes/Request.hpp"
+#include "../includes/Response.hpp"
+#include "../includes/utils.hpp"
+#include "../includes/config_manager.hpp"
+
+#define BUF_SIZE 8194
 
 struct ClientSession {
 	std::string buffer;
@@ -57,10 +71,23 @@ class Server {
 		void handleClientData(int client_fd);
 		void handleClientWrite(int client_fd);
 		void closeClient(int client_fd);
-
-    std::string processCGIOutput(const std::string& output);
-
+		
+		
+    	std::string processCGIOutput(const std::string& output);
+		
 		static bool running;
 		std::unordered_map<int, std::string> responses;
+	
+		// Handling client data
+		std::string getHostFromHeaders(const std::string& headers);
+		const ServerConfig* getServerConfigByHost(const std::vector<ServerConfig>& configs,
+												const std::string& host,
+												int port);
+		int getPortFromHeaders(const std::string& headers);
+		bool receiveData(int client_fd);
+		bool processHeaders(ClientSession& session);
+		bool isFullRequestReceived(const ClientSession& session);
+		void processRequest(int client_fd, ClientSession& session);
+		void enableWriteEvents(int client_fd);
 };
 

@@ -1,16 +1,4 @@
 #include "../includes/Server.hpp"
-#include "../includes/Request.hpp"
-#include "../includes/Response.hpp"
-#include "../includes/utils.hpp"
-#include <iostream>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <cstring>
-#include <signal.h>
-#include <cstdio>
-#include <cstdlib>
-
-#define BUF_SIZE 8194
 
 std::vector<struct pollfd> Server::poll_fds;
 std::map<int, CGIState> Server::cgi_states;
@@ -182,61 +170,20 @@ void Server::handleNewConnection(int listen_id) {
 }
 
 void Server::handleClientData(int client_fd) {
-  current_client_fd = client_fd;
-	Response res(config);
-	std::string headers;
+    current_client_fd = client_fd;
+    std::cout << "DEBUG: handleClientData" << std::endl;
 
-	std::cout << "DEBUG: handleClientData" << std::endl;
-	char buf[BUF_SIZE];
-	ssize_t nread = recv(client_fd, buf, BUF_SIZE - 1, 0);
-	if (nread <= 0) {
-		closeClient(client_fd);
-		return;
-	}
+    if (!receiveData(client_fd)) {
+        closeClient(client_fd);
+        return;
+    }
 
-	ClientSession& session = client_sessions[client_fd];
-	session.buffer.append(buf, nread);
-
-	size_t header_end = session.buffer.find("\r\n\r\n");
-	std::string header_str = session.buffer.substr(0, header_end + 4);
-	if (!session.headers_received && header_end != std::string::npos) {
-		session.headers_received = true;
-		header_end += 4;
-		headers = session.buffer.substr(0, header_end);
-		session.content_length = res.getContentLength(headers);
-	}
-
-	// If full request (headers + body) received
-	if (session.headers_received && session.buffer.size() >= header_end + session.content_length) {
-		std::string full_request = session.buffer;
-		std::string response;
-		
-		if (res.isMalformedRequest(full_request)) {
-			response = res.getErrorResponse(400);
-		} else {
-			res.parseRequest(full_request);
-			std::cout << "LENGTH: " << res.getContentLength(header_str) << std::endl;
-			std::cout << "CLIENT_MAX_BODY_SIZE: " << config[0].client_max_body_size << std::endl;
-			if (res.getContentLength(header_str) > config[0].client_max_body_size)
-			{
-				std::cout << "DEBUG: Payload Too Large" << std::endl;
-				response = res.getErrorResponse(413); // Payload Too Large
-			}
-			else
-				response = res.routing(res.getRequestLine().method, res.getRequestLine().url);
-		}
-		responses[client_fd] = response;
-		client_sessions.erase(client_fd); // Clear session
-
-		// Enable writing
-		for (auto& pfd : poll_fds) {
-			if (pfd.fd == client_fd) {
-				pfd.events = POLLOUT;
-				pfd.revents = 0;
-				break;
-			}
-		}
-	}
+    ClientSession& session = client_sessions[client_fd];
+    if (!processHeaders(session))
+        return; // wait for more data
+    
+    if (isFullRequestReceived(session))
+        processRequest(client_fd, session);
 }
 
 void Server::handleClientWrite(int client_fd) {
@@ -423,8 +370,6 @@ std::string Server::processCGIOutput(const std::string& output) {
   Response res(config);
   return res.buildResponse(body, status_code, content_type);
 }
-
-
 
 //==============================================================
 //===========example of poll usage==============================

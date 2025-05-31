@@ -143,7 +143,7 @@ std::string Response::getPostResponse(const std::string& url) {
     if (content_type == "application/x-www-form-urlencoded") {
         if (body.empty())
             return getErrorResponse(400);
-        if (url == "./www/submit") {
+        if (url.find("submit") != std::string::npos) {
             resBody = responseApplication(body);
             return buildResponse(resBody, 200, content_type);
         } else

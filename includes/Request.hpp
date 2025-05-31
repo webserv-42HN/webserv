@@ -44,6 +44,8 @@ class Request
 		void printRequest();
 		std::string urlDecode(const std::string &src);
 		s_request getRequestLine();
+
+		
 };
 
 #endif
