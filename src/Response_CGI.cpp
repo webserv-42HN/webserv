@@ -53,6 +53,7 @@ void extractScriptAndPathInfo(const std::string& fullPath, std::string& scriptPa
 std::string Response::executeCGI(const std::string& path, const std::string& query, const std::string& method) {
     std::string scriptPath, pathInfo;
     extractScriptAndPathInfo(path, scriptPath, pathInfo);
+
     // Check if the file exists and is executable
     if (!isCGIScript(path) && !isScriptExtension(path)) {
       std::cout << "DEBUG: Script not found or not executable: " << path << std::endl;
@@ -61,6 +62,7 @@ std::string Response::executeCGI(const std::string& path, const std::string& que
     // Add debugging output
     std::cout << "DEBUG: Executing CGI script at: " << scriptPath << std::endl;
     std::cout << "DEBUG: PATH_INFO: " << pathInfo << std::endl;
+    std::cout << "DEBUG: POST body length: " << body.length() << std::endl;
 
     int pipe_in[2];  // Parent writes to child (CGI input)
     int pipe_out[2]; // Child writes to parent (CGI output)
@@ -114,13 +116,17 @@ std::string Response::executeCGI(const std::string& path, const std::string& que
         env_strings.push_back("CONTENT_TYPE=" + content_type);
         
         // Get content length from headers
-        std::string content_length = "0";
-        for (const auto& header : headers) {
-            if (header.first == "Content-Length") {
-                content_length = header.second;
-                break;
-            }
-        }
+        // std::string content_length = "0";
+        // for (const auto& header : headers) {
+        //     if (header.first == "Content-Length") {
+        //         content_length = header.second;
+        //         break;
+        //     }
+        // }
+        // env_strings.push_back("CONTENT_LENGTH=" + content_length);
+
+        // Get content length from body size for POST requests
+        std::string content_length = std::to_string(body.length());
         env_strings.push_back("CONTENT_LENGTH=" + content_length);
 
         // Convert string vector to char* array for execve
@@ -161,10 +167,28 @@ std::string Response::executeCGI(const std::string& path, const std::string& que
     
     // Add stdin pipe to poll for writing if there's data to send
     if (method == "POST" && !body.empty()) {
-        Server::poll_fds.push_back({pipe_in[1], POLLOUT, 0});
+      std::cout << "DEBUG: Immediate write of " << body.size() << " bytes to CGI stdin" << std::endl;
+      std::cout << "DEBUG: POST body content: '" << body.substr(0, 50) << "'" << std::endl;
+      
+      // Write the body data immediately
+      ssize_t written = write(pipe_in[1], body.c_str(), body.size());
+      if (written > 0) {
+          std::cout << "DEBUG: Wrote " << written << " bytes immediately" << std::endl;
+      } else {
+          perror("write to CGI stdin");
+      }
+      
+      // Close stdin after writing to signal end of input
+      close(pipe_in[1]);
+      
+      // Update the state to show stdin is closed
+      state.stdin_fd = -1;
+      Server::cgi_states[pipe_out[0]] = state;
     } else {
-        // Close stdin pipe if no data to send
-        close(pipe_in[1]);
+      // For non-POST requests or empty bodies, close stdin pipe
+      close(pipe_in[1]);
+      state.stdin_fd = -1;
+      Server::cgi_states[pipe_out[0]] = state;
     }
     
     // Return empty response - the real response will be sent later

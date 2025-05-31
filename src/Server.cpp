@@ -50,6 +50,12 @@ void Server::mainLoop() {
           // Check if this is a CGI stdout pipe
           auto cgi_it = cgi_states.find(fd);
           if (cgi_it != cgi_states.end()) {
+              std::cout << "DEBUG: Processing CGI fd " << fd 
+              << ", stdin_fd: " << cgi_it->second.stdin_fd 
+              << ", stdout_fd: " << cgi_it->second.stdout_fd
+              << ", revents: " << poll_fds[i].revents
+              << ", POLLOUT check: " << (poll_fds[i].revents & POLLOUT)
+              << std::endl;
               // Handle CGI I/O
               if (poll_fds[i].revents & POLLIN) {
                   // Reading from CGI stdout
@@ -95,7 +101,7 @@ void Server::mainLoop() {
                       waitpid(cgi_it->second.pid, NULL, 0); // Prevent zombie processes
 
                       // Remove from cgi_states before modifying poll_fds
-                      cgi_states.erase(fd);
+                      // cgi_states.erase(fd);
 
                       // Remove from poll_fds
                       poll_fds.erase(poll_fds.begin() + i);
@@ -119,25 +125,37 @@ void Server::mainLoop() {
               }
               
               // Handle writing to CGI stdin
-              if (fd == cgi_it->second.stdin_fd && (poll_fds[i].revents & POLLOUT)) {
-                  std::string& input = cgi_it->second.input_buffer;
-                  if (!input.empty()) {
-                      ssize_t n = write(fd, input.c_str(), input.size());
-                      if (n > 0) {
-                          input.erase(0, n);
-                      } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                          perror("write CGI pipe");
-                      }
-                  }
-                  
-                  // If done writing, close pipe
-                  if (input.empty()) {
-                      close(fd);
-                      cgi_it->second.stdin_fd = -1;
+              if (poll_fds[i].revents & POLLOUT && cgi_it->second.stdin_fd == fd) {
+                // This is the key fix - using body field instead of input_buffer
+                std::string& body_data = cgi_it->second.input_buffer;
+                
+                std::cout << "DEBUG: Writing " << body_data.size() << " bytes to CGI stdin" << std::endl;
+                std::cout << "DEBUG: POST body content: '" << body_data.substr(0, 50) << "'" << std::endl;
+
+                if (!body_data.empty()) {
+                    ssize_t n = write(fd, body_data.c_str(), body_data.size());
+                    if (n > 0) {
+                        body_data.erase(0, n);
+                        std::cout << "DEBUG: Wrote " << n << " bytes to CGI stdin" << std::endl;
+                    } else if (n < 0) {
+                        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                            perror("write to CGI stdin");
+                        }
+                    }
+                }
+                
+                // If done writing or error, close pipe
+                if (body_data.empty()) {
+                    std::cout << "DEBUG: Closing CGI stdin pipe" << std::endl;
+                    close(fd);
+                    
+                    // Update CGI state
+                    CGIState& state = cgi_it->second;
+                    state.stdin_fd = -1;
                       
-                      // Remove from poll_fds
-                      poll_fds.erase(poll_fds.begin() + i);
-                      i--; // Adjust index
+                    // Remove from poll_fds
+                    poll_fds.erase(poll_fds.begin() + i);
+                    i--; // Adjust index
                   }
                   continue;
               }
@@ -189,7 +207,7 @@ void Server::handleClientWrite(int client_fd) {
 	std::cout << "DEBUG: handleClientWrite" << std::endl;
 	auto it = responses.find(client_fd);
 	if (it == responses.end()) {
-		std::cerr << "No response found for client " << client_fd << std::endl;
+		// std::cerr << "No response found for client " << client_fd << std::endl;
 		// closeClient(client_fd);
 		return ;
 	}

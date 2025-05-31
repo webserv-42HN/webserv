@@ -6,6 +6,26 @@ import sys
 # Print HTTP headers first
 print("Content-Type: text/html\n")
 
+# For POST requests, read from stdin
+post_data = ""
+if os.environ.get('REQUEST_METHOD') == 'POST':
+    content_length = os.environ.get('CONTENT_LENGTH', '0')
+    if content_length and content_length.isdigit():
+        post_data = sys.stdin.read(int(content_length))
+
+# Debug info about content length and POST reading
+print("<h2>Debug Info:</h2>")
+print("<div class='env-var'>")
+print(f"CONTENT_LENGTH: '{os.environ.get('CONTENT_LENGTH', 'Not set')}'<br>")
+print(f"CONTENT_TYPE: '{os.environ.get('CONTENT_TYPE', 'Not set')}'<br>")
+print(f"Raw POST data length: {len(post_data)}<br>")
+if len(post_data) > 0:
+    print(f"First 30 chars: '{post_data[:30]}'<br>")
+else:
+    print("No POST data received<br>")
+print(f"stdin isatty: {sys.stdin.isatty()}<br>")
+print("</div>")
+
 # Start HTML output
 print("<html>")
 print("<head><title>CGI PATH_INFO Test</title>")
@@ -25,6 +45,11 @@ print("<h1>CGI PATH_INFO Test</h1>")
 path_info = os.environ.get('PATH_INFO', '')
 print("<h2>PATH_INFO:</h2>")
 print(f"<div class='env-var'>{path_info}</div>")
+
+# Display POST data if available
+if post_data:
+    print("<h2>POST Data:</h2>")
+    print(f"<div class='env-var'>{post_data}</div>")
 
 # Parse and display path segments if PATH_INFO exists
 if path_info:
