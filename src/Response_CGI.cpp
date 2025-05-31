@@ -53,6 +53,7 @@ void extractScriptAndPathInfo(const std::string& fullPath, std::string& scriptPa
 std::string Response::executeCGI(const std::string& path, const std::string& query, const std::string& method) {
     std::string scriptPath, pathInfo;
     extractScriptAndPathInfo(path, scriptPath, pathInfo);
+
     // Check if the file exists and is executable
     if (!isCGIScript(path) && !isScriptExtension(path)) {
       std::cout << "DEBUG: Script not found or not executable: " << path << std::endl;
@@ -61,7 +62,7 @@ std::string Response::executeCGI(const std::string& path, const std::string& que
     // Add debugging output
     std::cout << "DEBUG: Executing CGI script at: " << scriptPath << std::endl;
     std::cout << "DEBUG: PATH_INFO: " << pathInfo << std::endl;
-
+    std::cout << "DEBUG: POST body length: " << body.length() << std::endl;
     int pipe_in[2];  // Parent writes to child (CGI input)
     int pipe_out[2]; // Child writes to parent (CGI output)
 
@@ -113,14 +114,15 @@ std::string Response::executeCGI(const std::string& path, const std::string& que
         env_strings.push_back("PATH_INFO=" + pathInfo);
         env_strings.push_back("CONTENT_TYPE=" + content_type);
         
-        // Get content length from headers
-        std::string content_length = "0";
-        for (const auto& header : headers) {
-            if (header.first == "Content-Length") {
-                content_length = header.second;
-                break;
-            }
-        }
+        // // Get content length from headers
+        // std::string content_length = "0";
+        // for (const auto& header : headers) {
+        //     if (header.first == "Content-Length") {
+        //         content_length = header.second;
+        //         break;
+        //     }
+        // }
+        std::string content_length = std::to_string(body.length());
         env_strings.push_back("CONTENT_LENGTH=" + content_length);
 
         // Convert string vector to char* array for execve
@@ -161,12 +163,45 @@ std::string Response::executeCGI(const std::string& path, const std::string& que
     
     // Add stdin pipe to poll for writing if there's data to send
     if (method == "POST" && !body.empty()) {
-        Server::poll_fds.push_back({pipe_in[1], POLLOUT, 0});
-    } else {
-        // Close stdin pipe if no data to send
+      std::cout << "DEBUG: Writing " << body.size() << " bytes to CGI stdin" << std::endl;
+      
+      // For smaller bodies, try immediate write
+      ssize_t written = write(pipe_in[1], body.c_str(), body.size());
+      
+      if (written == (ssize_t)body.size()) {
+        // All data written successfully
+        std::cout << "DEBUG: Wrote all " << written << " bytes immediately" << std::endl;
+        
+        // Close pipe after successful write
         close(pipe_in[1]);
+        state.stdin_fd = -1;
+        Server::cgi_states[pipe_out[0]] = state;
+      }
+      else if (written > 0) {
+          // Partial write - update the input buffer to only include remaining data
+          std::cout << "DEBUG: Partial write of " << written << " bytes" << std::endl;
+          state.input_buffer = body.substr(written);
+          
+          // Add stdin pipe to poll for writing the rest
+          Server::poll_fds.push_back({pipe_in[1], POLLOUT, 0});
+          Server::cgi_states[pipe_out[0]] = state;
+          return ""; // Return empty response - the real response will be sent later
+      }
+      else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+          // No data written due to non-blocking pipe
+          std::cout << "DEBUG: Would block, queuing entire body" << std::endl;
+          Server::poll_fds.push_back({pipe_in[1], POLLOUT, 0});
+          Server::cgi_states[pipe_out[0]] = state;
+          return ""; // Return empty response - the real response will be sent later
+      }
+      else {
+          perror("write to CGI stdin");
+          
+          // Close the pipe if write failed with an error other than would block
+          close(pipe_in[1]);
+          state.stdin_fd = -1;
+          Server::cgi_states[pipe_out[0]] = state;
+      }
     }
-    
-    // Return empty response - the real response will be sent later
-    return "";
+  return ""; // Return empty string - CGI process is running asynchronously
 }

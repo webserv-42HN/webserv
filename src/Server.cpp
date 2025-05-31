@@ -50,6 +50,12 @@ void Server::mainLoop() {
           // Check if this is a CGI stdout pipe
           auto cgi_it = cgi_states.find(fd);
           if (cgi_it != cgi_states.end()) {
+              std::cout << "DEBUG: Processing CGI fd " << fd
+              << ", stdin_fd: " << cgi_it->second.stdin_fd 
+              << ", stdout_fd: " << cgi_it->second.stdout_fd
+              << ", revents: " << poll_fds[i].revents
+              << ", POLLOUT check: " << (poll_fds[i].revents & POLLOUT)
+              << std::endl;
               // Handle CGI I/O
               if (poll_fds[i].revents & POLLIN) {
                   // Reading from CGI stdout
@@ -110,8 +116,8 @@ void Server::mainLoop() {
                       //     }
                       // }
                       
-                      // Remove CGI state
-                      cgi_states.erase(fd);
+                      // // Remove CGI state
+                      // cgi_states.erase(fd);
                   } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
                       perror("read CGI pipe");
                   }
