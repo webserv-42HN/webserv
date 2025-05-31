@@ -11,10 +11,21 @@ Response::Response(std::vector<ServerConfig> config): Rconfig(config) {}
 Response::~Response() {}
 
 bool Response::isCGIRequest(const std::string& url) {
-  return url.find("/cgi/") != std::string::npos ||
-         url.find(".cgi") != std::string::npos ||
-         url.find(".py") != std::string::npos ||
-         url.find(".php") != std::string::npos;
+  // First check if it's in the CGI directory
+  bool in_cgi_dir = url.find("/cgi/") != std::string::npos;
+  
+  // Then check if it has a script extension
+  bool has_script_ext = url.find(".cgi") != std::string::npos ||
+                        url.find(".py") != std::string::npos ||
+                        url.find(".php") != std::string::npos;
+  
+  // If in CGI directory, only treat as CGI if it has a script extension
+  if (in_cgi_dir) {
+    return has_script_ext;
+  }
+  
+  // Otherwise, just check extension
+  return has_script_ext;
 }
 
 std::string Response::routing(std::string method, std::string url) {
