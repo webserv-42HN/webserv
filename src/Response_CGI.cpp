@@ -25,14 +25,42 @@ bool isScriptExtension(const std::string& path) {
            path.find(".php") != std::string::npos;
 }
 
+// Extract script path and PATH_INFO from a URL
+void extractScriptAndPathInfo(const std::string& fullPath, std::string& scriptPath, std::string& pathInfo) {
+  // Start with the assumption that there's no PATH_INFO
+  scriptPath = fullPath;
+  pathInfo = "";
+  
+  // For common extensions like .py, .cgi, .php
+  const std::vector<std::string> extensions = {".py", ".cgi", ".php", ".sh"};
+  
+  for (const auto& ext : extensions) {
+      size_t extPos = fullPath.find(ext);
+      if (extPos != std::string::npos) {
+          // Find the position right after the extension
+          size_t pathInfoStart = extPos + ext.length();
+          
+          // If there's more content after the extension, it's PATH_INFO
+          if (pathInfoStart < fullPath.length()) {
+              scriptPath = fullPath.substr(0, pathInfoStart);
+              pathInfo = fullPath.substr(pathInfoStart);
+          }
+          break;
+      }
+  }
+}
+
 std::string Response::executeCGI(const std::string& path, const std::string& query, const std::string& method) {
+    std::string scriptPath, pathInfo;
+    extractScriptAndPathInfo(path, scriptPath, pathInfo);
     // Check if the file exists and is executable
     if (!isCGIScript(path) && !isScriptExtension(path)) {
       std::cout << "DEBUG: Script not found or not executable: " << path << std::endl;
-        return getErrorResponse(404);
+      return getErrorResponse(404);
     }
     // Add debugging output
-    std::cout << "DEBUG: Executing CGI script at: " << path << std::endl;
+    std::cout << "DEBUG: Executing CGI script at: " << scriptPath << std::endl;
+    std::cout << "DEBUG: PATH_INFO: " << pathInfo << std::endl;
 
     int pipe_in[2];  // Parent writes to child (CGI input)
     int pipe_out[2]; // Child writes to parent (CGI output)
@@ -81,7 +109,8 @@ std::string Response::executeCGI(const std::string& path, const std::string& que
         env_strings.push_back("SERVER_PROTOCOL=HTTP/1.1");
         env_strings.push_back("REQUEST_METHOD=" + method);
         env_strings.push_back("QUERY_STRING=" + query);
-        env_strings.push_back("SCRIPT_NAME=" + path);
+        env_strings.push_back("SCRIPT_NAME=" + scriptPath);
+        env_strings.push_back("PATH_INFO=" + pathInfo);
         env_strings.push_back("CONTENT_TYPE=" + content_type);
         
         // Get content length from headers
@@ -104,7 +133,7 @@ std::string Response::executeCGI(const std::string& path, const std::string& que
         char* argv[3]; // Increase size to 3
         if (path.find(".py") != std::string::npos) {
             argv[0] = strdup("/usr/bin/python3"); // Use the interpreter path
-            argv[1] = strdup(path.c_str()); // Script path becomes argument
+            argv[1] = strdup(scriptPath.c_str()); // Script path becomes argument
             argv[2] = NULL;
             execve(argv[0], argv, envp); // Execute the interpreter
         } else {
