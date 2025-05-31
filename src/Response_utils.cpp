@@ -90,10 +90,34 @@ size_t Response::getContentLength(const std::string &headers) const {
 
 std::string Response::buildResponse(const std::string& body, int statusCode, const std::string& contentType) {
     std::stringstream res;
-    res << "HTTP/1.1 " << statusCode << " OK\r\n";
+    if (statusCode == 404)
+        res << "HTTP/1.1 " << statusCode << " Not Found\r\n";
+    if (statusCode == 400)
+        res << "HTTP/1.1 " << statusCode << " Bad Request\r\n";
+    if (statusCode == 405)
+        res << "HTTP/1.1 " << statusCode << " Method Not Allowed\r\n";
+    if (statusCode == 500)
+        res << "HTTP/1.1 " << statusCode << " Internal Server Error\r\n";
+    if (statusCode == 403)
+        res << "HTTP/1.1 " << statusCode << " Forbidden\r\n";
+    if (statusCode == 413)
+        res << "HTTP/1.1 " << statusCode << " Payload Too Large\r\n";
+    if (statusCode == 200)
+        res << "HTTP/1.1 " << statusCode << " OK\r\n";
     res << "Content-Type: " << contentType << "\r\n";
     res << "Content-Length: " << body.size() << "\r\n";
     res << "\r\n";
     res << body;
     return res.str();
+}
+
+
+std::string Response::responseTextPlain(const std::string& body) {
+    std::string response;
+    response += "HTTP/1.1 200 OK\r\n";
+    response += "Content-Type: text/plain\r\n";
+    response += "Content-Length: " + std::to_string(body.size()) + "\r\n";
+    response += "\r\n";
+    response += body;
+    return response;
 }

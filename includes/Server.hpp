@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <sys/wait.h>
+#include <set>
 
 #include "../includes/Request.hpp"
 #include "../includes/Response.hpp"
@@ -48,6 +49,7 @@ class Server {
 		// std::vector<struct pollfd> poll_fds;
 		std::vector<int> uniqPorts;
 		std::map<int, ClientSession> client_sessions;
+		std::set<int> seenPorts;
 
 	public:
     static std::vector<struct pollfd> poll_fds;

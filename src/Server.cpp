@@ -263,6 +263,14 @@ void Server::cleanup () {
 }
 
 void Server::setupPorts() {
+	std::set<int> seenPorts;
+	for (std::vector<ServerConfig>::iterator it = config.begin(); it != config.end(); ++it) {
+		if (!seenPorts.insert(it->port).second) {
+			std::cerr << "Error: Port " << it->port << " is declared more than once in the config.\n";
+			exit(1);
+		}
+	}
+
 	std::vector<ServerConfig>::iterator it = config.begin();
 	std::vector<ServerConfig>::iterator it_end = config.end();
 

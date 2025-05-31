@@ -94,6 +94,7 @@ class Response : public Request
         std::string getMimeType(const std::string& path);
         size_t getContentLength(const std::string &headers) const;
         std::string responseApplication(std::string body);
+        std::string responseTextPlain(const std::string& body);
 
         bool isCGIRequest(const std::string& url);
         std::string executeCGI(const std::string& path, const std::string& query, const std::string& method);

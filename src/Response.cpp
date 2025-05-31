@@ -5,6 +5,7 @@
 #include "../includes/Router.hpp"
 #include "../includes/Request.hpp"
 #include <limits>
+#include <unistd.h> // For access() and W_OK
 
 Response::Response(std::vector<ServerConfig> config): Rconfig(config) {}
 
@@ -38,8 +39,11 @@ std::string Response::routing(std::string method, std::string url) {
         url += '/';
     }
     t_routeConfig config = router.getRouteConfig(url);
-    std::string full_path = config.root_dir + url;
+    if (!config.redirect_to.empty())
+        url = config.redirect_to;
 
+    std::string full_path = config.root_dir + url;
+    std::cout << "DEBUG: FULL PATH: " << full_path << std::endl;
     if (is_cgi) {
       // First check if the path is a directory
       if (isDirectory(full_path)) {
@@ -151,9 +155,13 @@ std::string Response::getPostResponse(const std::string& url) {
         return getErrorResponse(400); // Bad Request - No Content-Type
     
         // Handle URL-encoded form submission (e.g., /submit)
-    if (content_type == "application/x-www-form-urlencoded") {
+    if (content_type == "application/x-www-form-urlencoded" || content_type.find("text/plain") != std::string::npos) {
         if (body.empty())
             return getErrorResponse(400);
+        if (url == "www") {
+            resBody = responseTextPlain(body);
+            return buildResponse(resBody, 200, content_type);
+        }
         if (url.find("submit") != std::string::npos) {
             resBody = responseApplication(body);
             return buildResponse(resBody, 200, content_type);
@@ -189,6 +197,9 @@ std::string Response::getDeleteResponse(const std::string& filepath) {
     std::cout << "DEBUG: Deleting file: " << filepath << std::endl;
     if (stat(filepath.c_str(), &st) != 0) {
         return getErrorResponse(404); // Not found
+    }
+    if (access(filepath.c_str(), W_OK) != 0) {
+        return getErrorResponse(403); // Forbidden
     }
     if (remove(filepath.c_str()) != 0) {
         return getErrorResponse(500); // Failed to delete

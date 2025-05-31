@@ -56,10 +56,10 @@ t_routeConfig Router::convertToRouteConfig(const RouteConfigFromConfigFile& cfg)
     
     // config.allowed_methods = cfg.allowed_methods;  //copilot fix
     config.root_dir = cfg.root;
-    config.redirect_to = ""; // Set if needed
+    std::cout << "DEBUG: REDIRECT: " << cfg.redirect << std::endl;
+    config.redirect_to = cfg.redirect; // Set if needed
     config.autoindex = cfg.autoindex;
     config.client_max_body_size = cfg.client_max_body_size;
-    std::cout << "DEBUG: DEFAULT FILE: " << cfg.default_file << std::endl;
     config.default_file = cfg.default_file;
     return config;
 }
