@@ -1,14 +1,10 @@
 CPP = c++
-
 CFLAGS = -c -g -Wall -Werror -Wextra -std=c++17
 OBJDIR = obj
 NAME = webserv
-
 SRCDIR = src
 INCDIR = includes
-
-SRCS = Client_Hander.cpp \
-        Config_Manager.cpp main.cpp \
+SRCS =  Client_Handler.cpp Config_Manager.cpp main.cpp \
         Request_utils.cpp \
         Request.cpp \
         Response_CGI.cpp \
@@ -20,13 +16,20 @@ SRCS = Client_Hander.cpp \
         Server.cpp \
         Utils.cpp
 
-OBJS = $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
+# Fix: Add source directory to each file in SRCS_FULL
+SRCS_FULL = $(addprefix $(SRCDIR)/, $(SRCS))
+# Then create objects from the full paths
+OBJS = $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS_FULL))
 
-HEADERS = $(wildcard $(INCDIR)/*.hpp)
+# Print variables for debugging
+# $(info CPP = $(CPP))
+# $(info CFLAGS = $(CFLAGS))
+# $(info SRCS = $(SRCS))
+# $(info OBJS = $(OBJS))
+# $(info HEADERS = $(HEADERS))
 
 all: $(NAME)
-
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(HEADERS) Makefile
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp Makefile
 	@mkdir -p $(dir $@)
 	$(CPP) $(CFLAGS) -I$(INCDIR) -c $< -o $@
 

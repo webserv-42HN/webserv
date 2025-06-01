@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Response.hpp"
-#include "config_manager.hpp"
+#include "../includes/Response.hpp"
+#include "../includes/Config_Manager.hpp"
 
 class Router {
     private:
