@@ -16,7 +16,7 @@ struct ClientSession {
 class Server {
 	private:
 		std::vector<ServerConfig> config;
-		std::vector<int> ss_Fds; //delete later, it's gonna be a map
+		std::vector<int> ss_Fds;
 		std::map<int, ServerConfig> serverSockets;
 		std::map<int, ServerConfig> clientConfigs;
 		std::vector<struct pollfd> poll_fds;
@@ -25,11 +25,8 @@ class Server {
 
 	public:
 		Server(std::vector<ServerConfig> config);
-		// ~Server();
 
-		void setupPorts(); //initial step when we go through the results of the parser,
-		//look for the unique ports and create socket for each port we gonna listen on
-
+		void setupPorts();
 
 		void run();
 		static void signalHandler(int signum);
