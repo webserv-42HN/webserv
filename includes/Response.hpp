@@ -16,8 +16,8 @@
 #include <unistd.h>
 #include <limits>
 
-#include "Request.hpp"
-#include "config_manager.hpp"
+#include "../includes/Request.hpp"
+#include "../includes/Config_Manager.hpp"
 
 /*
 HTTP Status Codes

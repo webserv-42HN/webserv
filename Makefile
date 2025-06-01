@@ -7,12 +7,21 @@ NAME = webserv
 SRCDIR = src
 INCDIR = includes
 
-# Automatically find all .cpp files in src/
-SRCS = $(wildcard $(SRCDIR)/*.cpp)
-# Extract just the filenames without path for objects
+SRCS = Client_Hander.cpp \
+        Config_Manager.cpp main.cpp \
+        Request_utils.cpp \
+        Request.cpp \
+        Response_CGI.cpp \
+        Response_To_Post.cpp \
+        Response.cpp \
+        Response_utils.cpp \
+        Router.cpp \
+        Server_utils.cpp \
+        Server.cpp \
+        Utils.cpp
+
 OBJS = $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRCS))
 
-# For headers, you can keep it manual or also wildcard if needed:
 HEADERS = $(wildcard $(INCDIR)/*.hpp)
 
 all: $(NAME)

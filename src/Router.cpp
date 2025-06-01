@@ -1,5 +1,5 @@
 #include "../includes/Router.hpp"
-#include "../includes/config_manager.hpp"
+#include "../includes/Config_Manager.hpp"
 
 Router::Router(std::vector<ServerConfig> RouteConfigs) : routeConfigs(RouteConfigs) {
     for (const ServerConfig& server : routeConfigs) {

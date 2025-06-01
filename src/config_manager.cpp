@@ -1,4 +1,4 @@
-#include "config_manager.hpp"
+#include "../includes/Config_Manager.hpp"
 
 // ConfigManager implementation
 ConfigManager::ConfigManager() : m_hasError(false) {}

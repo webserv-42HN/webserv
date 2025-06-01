@@ -33,124 +33,120 @@ void stopLoop(int) {
 }
 
 void Server::mainLoop() {
-  while (running) {
-      int poll_count = poll(poll_fds.data(), poll_fds.size(), 1000);
-      if (poll_count < 0) {
-          if (errno == EINTR)
-              continue;
-          perror("poll");
-          break;
-      }
+    while (running) {
+        int poll_count = poll(poll_fds.data(), poll_fds.size(), 1000);
+        if (poll_count < 0) {
+            if (errno == EINTR)
+                continue;
+            perror("poll");
+            break;
+        }
 
-      for (size_t i = 0; i < poll_fds.size(); i++) {
-          int fd = poll_fds[i].fd;
-          
-          // Skip if no events
-          if (poll_fds[i].revents == 0)
-              continue;
-          
-          // Check if this is a CGI stdout pipe
-          auto cgi_it = cgi_states.find(fd);
-          if (cgi_it != cgi_states.end()) {
-            //   std::cout << "DEBUG: Processing CGI fd " << fd
-            //   << ", stdin_fd: " << cgi_it->second.stdin_fd 
-            //   << ", stdout_fd: " << cgi_it->second.stdout_fd
-            //   << ", revents: " << poll_fds[i].revents
-            //   << ", POLLOUT check: " << (poll_fds[i].revents & POLLOUT)
-            //          << std::endl;
-              // Handle CGI I/O
-              if (poll_fds[i].revents & POLLIN) {
-                  // Reading from CGI stdout
-                  char buf[4096];
-                  ssize_t n = read(fd, buf, sizeof(buf) - 1);
-                  
-                  if (n > 0) {
-                      // Accumulate output
-                      cgi_it->second.output_buffer.append(buf, n);
-                  } else if (n == 0) {
-                      // CGI process finished writing
-                      int client_fd = cgi_it->second.client_fd;
-                      
-                      // Check if the client is still connected
-                      bool client_exists = false;
-                      for (const auto& pfd : poll_fds) {
-                          if (pfd.fd == client_fd) {
-                              client_exists = true;
-                              break;
-                          }
-                      }
+        for (size_t i = 0; i < poll_fds.size(); i++) {
+            int fd = poll_fds[i].fd;
 
-                      if (client_exists) {
-                        // Process output and create response
-                        std::string response = processCGIOutput(cgi_it->second.output_buffer);
-                        // std::cout << "DEBUG: CGI output received, length: " << cgi_it->second.output_buffer.size() << std::endl;
-                        responses[client_fd] = response;
-                        
-                        // Enable writing for client
-                        for (auto& pfd : poll_fds) {
-                            if (pfd.fd == client_fd) {
-                                pfd.events = POLLOUT;
-                                pfd.revents = 0;
-                                break;
-                            }
-                        }
-                      }
-                      
-                      // Clean up CGI resources
-                      if (cgi_it->second.stdin_fd > 0)
-                          close(cgi_it->second.stdin_fd);
-                      close(fd); // close stdout pipe
-                      waitpid(cgi_it->second.pid, NULL, 0); // Prevent zombie processes
+            // Skip if no events
+            if (poll_fds[i].revents == 0)
+                continue;
 
-                      // Remove from cgi_states before modifying poll_fds
-                      cgi_states.erase(fd);
+            // Check if it's a CGI pipe
+            if (cgi_states.find(fd) != cgi_states.end()) {
+                handleCGIPipeEvents(i);
+                continue;
+            }
 
-                      // Remove from poll_fds
-                      poll_fds.erase(poll_fds.begin() + i);
-                      i--; // Adjust index after removal
-                  } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                      perror("read CGI pipe");
-                  }
-                  continue;
-              }
-              
-              // Handle writing to CGI stdin
-              if (fd == cgi_it->second.stdin_fd && (poll_fds[i].revents & POLLOUT)) {
-                  std::string& input = cgi_it->second.input_buffer;
-                  if (!input.empty()) {
-                      ssize_t n = write(fd, input.c_str(), input.size());
-                      if (n > 0) {
-                          input.erase(0, n);
-                      } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                          perror("write CGI pipe");
-                      }
-                  }
-                  
-                  // If done writing, close pipe
-                  if (input.empty()) {
-                      close(fd);
-                      cgi_it->second.stdin_fd = -1;
-                      
-                      // Remove from poll_fds
-                      poll_fds.erase(poll_fds.begin() + i);
-                      i--; // Adjust index
-                  }
-                  continue;
-              }
-          }
-          
-          // Handle regular socket I/O
-          if (poll_fds[i].revents & POLLIN) {
-              if (std::find(ss_Fds.begin(), ss_Fds.end(), fd) != ss_Fds.end()) {
-                  handleNewConnection(fd);
-              } else {
-                  handleClientData(fd);
-              }
-          } else if (poll_fds[i].revents & POLLOUT) {
-              handleClientWrite(fd);
-          }
-      }
-  }
+            // Otherwise, handle normal socket events
+            handleSocketEvents(i);
+        }
+    }
+}
+
+void Server::handleCGIPipeEvents(size_t i) {
+    int fd = poll_fds[i].fd;
+    auto cgi_it = cgi_states.find(fd);
+    if (cgi_it == cgi_states.end())
+        return;
+
+    // Handle reading from CGI stdout
+    if (poll_fds[i].revents & POLLIN) {
+        char buf[4096];
+        ssize_t n = read(fd, buf, sizeof(buf) - 1);
+
+        if (n > 0) {
+            cgi_it->second.output_buffer.append(buf, n);
+        } else if (n == 0) {
+            int client_fd = cgi_it->second.client_fd;
+
+            // Check if client still exists
+            bool client_exists = false;
+            for (const auto& pfd : poll_fds) {
+                if (pfd.fd == client_fd) {
+                    client_exists = true;
+                    break;
+                }
+            }
+
+            if (client_exists) {
+                std::string response = processCGIOutput(cgi_it->second.output_buffer);
+                responses[client_fd] = response;
+
+                for (auto& pfd : poll_fds) {
+                    if (pfd.fd == client_fd) {
+                        pfd.events = POLLOUT;
+                        pfd.revents = 0;
+                        break;
+                    }
+                }
+            }
+
+            if (cgi_it->second.stdin_fd > 0)
+                close(cgi_it->second.stdin_fd);
+            close(fd);
+            waitpid(cgi_it->second.pid, NULL, 0);
+
+            cgi_states.erase(fd);
+            poll_fds.erase(poll_fds.begin() + i);
+            i--;
+        } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            perror("read CGI pipe");
+        }
+        return;
+    }
+
+    // Handle writing to CGI stdin
+    if (fd == cgi_it->second.stdin_fd && (poll_fds[i].revents & POLLOUT)) {
+        std::string& input = cgi_it->second.input_buffer;
+        if (!input.empty()) {
+            ssize_t n = write(fd, input.c_str(), input.size());
+            if (n > 0) {
+                input.erase(0, n);
+            } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                perror("write CGI pipe");
+            }
+        }
+
+        if (input.empty()) {
+            close(fd);
+            cgi_it->second.stdin_fd = -1;
+            poll_fds.erase(poll_fds.begin() + i);
+            i--;
+        }
+        return;
+    }
+}
+
+void Server::handleSocketEvents(size_t i) {
+    int fd = poll_fds[i].fd;
+
+    if (poll_fds[i].revents & POLLIN) {
+        if (std::find(ss_Fds.begin(), ss_Fds.end(), fd) != ss_Fds.end()) {
+            handleNewConnection(fd);
+        } else {
+            handleClientData(fd);
+        }
+    } else if (poll_fds[i].revents & POLLOUT) {
+        handleClientWrite(fd);
+    }
 }
 
 void Server::handleNewConnection(int listen_id) {

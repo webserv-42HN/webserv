@@ -18,8 +18,8 @@
 
 #include "../includes/Request.hpp"
 #include "../includes/Response.hpp"
-#include "../includes/utils.hpp"
-#include "../includes/config_manager.hpp"
+#include "../includes/Utils.hpp"
+#include "../includes/Config_Manager.hpp"
 
 #define BUF_SIZE 8194
 
@@ -67,6 +67,8 @@ class Server {
 		void run();
 		static void signalHandler(int signum);
 		void mainLoop();
+		void handleCGIPipeEvents(size_t i);
+		void handleSocketEvents(size_t i);
 		void cleanup();
 
 		void handleNewConnection(int listen_id);
