@@ -1,7 +1,6 @@
 #include "../includes/Router.hpp"
 #include "../includes/config_manager.hpp"
 
-
 Router::Router(std::vector<ServerConfig> RouteConfigs) : routeConfigs(RouteConfigs) {
     for (const ServerConfig& server : routeConfigs) {
         for (const RouteConfigFromConfigFile& route : server.routes) {
@@ -56,7 +55,6 @@ t_routeConfig Router::convertToRouteConfig(const RouteConfigFromConfigFile& cfg)
     
     // config.allowed_methods = cfg.allowed_methods;  //copilot fix
     config.root_dir = cfg.root;
-    std::cout << "DEBUG: REDIRECT: " << cfg.redirect << std::endl;
     config.redirect_to = cfg.redirect; // Set if needed
     config.autoindex = cfg.autoindex;
     config.client_max_body_size = cfg.client_max_body_size;

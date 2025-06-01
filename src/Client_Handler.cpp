@@ -45,7 +45,6 @@ void Server::processRequest(int client_fd, ClientSession& session) {
     int port = getListeningPortForClient(client_fd);
     const ServerConfig* server_cfg = getServerConfigByHost(config, host, port);
 
-
     if (!server_cfg && host != "localhost") {
         response = res.getErrorResponse(404); // Not Found
         responses[client_fd] = response;

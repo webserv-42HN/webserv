@@ -1,16 +1,7 @@
-// #pragma once
-// #include <string>
-// #include <sstream>
-
-// class Response {
-// 	public:
-// 		static std::string build(const std::string& body, const std::string& content_type = "text/html", int code = 200, const std::string& status = "OK");
-// };
-
-#ifndef RESPONSE_HPP
-#define RESPONSE_HPP
+#pragma once
 
 #include <iostream>
+#include <cstring>
 #include <string>
 #include <sstream>
 #include <fstream>
@@ -19,6 +10,12 @@
 #include <functional>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <poll.h>
+#include <fcntl.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <limits>
+
 #include "Request.hpp"
 #include "config_manager.hpp"
 
@@ -38,15 +35,9 @@ enum StatusCode {
     InternalServerError = 500,
     FileTooLarge = 413,
     Forbidden = 403,
-    MethodNotAllowed = 405
+    MethodNotAllowed = 405,
+    UnsupportedMediaType = 415
 };
-
-// enum HttpMethod {
-//     GET,
-//     POST,
-//     DELETE,
-//     UNKNOWN
-// };
 
 typedef struct RouteConfig {
     std::vector<HttpMethod> allowed_methods;
@@ -58,16 +49,12 @@ typedef struct RouteConfig {
 }   t_routeConfig;
 
 using RouteHandler = std::function<t_routeConfig(std::string)>;
-// typedef std::function<t_routeConfig(std::string)> RouteHandler; -> C98++
 
 class Response : public Request
 {
     protected:
-        // std::string error_dir = "./www/error/";
         t_routeConfig route_config;
         std::vector<ServerConfig> Rconfig;
-        // Request request;
-        // std::unordered_map<std::string, RouteHandler> routes;
 
     public:
         Response(std::vector<ServerConfig> config);
@@ -99,5 +86,3 @@ class Response : public Request
         bool isCGIRequest(const std::string& url);
         std::string executeCGI(const std::string& path, const std::string& query, const std::string& method);
 };
-
-#endif

@@ -12,6 +12,9 @@ Server::Server(std::vector<ServerConfig> config) : config(config) {
 	setupPorts();
 }
 
+Server::~Server() {
+}
+
 void Server::run() {
 	signal(SIGINT, signalHandler);
 	signal(SIGTERM, signalHandler);
@@ -22,7 +25,6 @@ void Server::run() {
 
 void Server::signalHandler(int signum) {
 	(void)signum;
-	// std::cout << "Shuttimg down the server..." << std::endl;
 	running = false;
 }
 
@@ -50,12 +52,12 @@ void Server::mainLoop() {
           // Check if this is a CGI stdout pipe
           auto cgi_it = cgi_states.find(fd);
           if (cgi_it != cgi_states.end()) {
-              std::cout << "DEBUG: Processing CGI fd " << fd
-              << ", stdin_fd: " << cgi_it->second.stdin_fd 
-              << ", stdout_fd: " << cgi_it->second.stdout_fd
-              << ", revents: " << poll_fds[i].revents
-              << ", POLLOUT check: " << (poll_fds[i].revents & POLLOUT)
-              << std::endl;
+            //   std::cout << "DEBUG: Processing CGI fd " << fd
+            //   << ", stdin_fd: " << cgi_it->second.stdin_fd 
+            //   << ", stdout_fd: " << cgi_it->second.stdout_fd
+            //   << ", revents: " << poll_fds[i].revents
+            //   << ", POLLOUT check: " << (poll_fds[i].revents & POLLOUT)
+            //          << std::endl;
               // Handle CGI I/O
               if (poll_fds[i].revents & POLLIN) {
                   // Reading from CGI stdout
@@ -81,7 +83,7 @@ void Server::mainLoop() {
                       if (client_exists) {
                         // Process output and create response
                         std::string response = processCGIOutput(cgi_it->second.output_buffer);
-                        std::cout << "DEBUG: CGI output received, length: " << cgi_it->second.output_buffer.size() << std::endl;
+                        // std::cout << "DEBUG: CGI output received, length: " << cgi_it->second.output_buffer.size() << std::endl;
                         responses[client_fd] = response;
                         
                         // Enable writing for client
@@ -106,18 +108,6 @@ void Server::mainLoop() {
                       // Remove from poll_fds
                       poll_fds.erase(poll_fds.begin() + i);
                       i--; // Adjust index after removal
-                      
-                      // // Enable writing for client
-                      // for (auto& pfd : poll_fds) {
-                      //     if (pfd.fd == client_fd) {
-                      //         pfd.events = POLLOUT;
-                      //         pfd.revents = 0;
-                      //         break;
-                      //     }
-                      // }
-                      
-                      // // Remove CGI state
-                      // cgi_states.erase(fd);
                   } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
                       perror("read CGI pipe");
                   }
@@ -164,7 +154,7 @@ void Server::mainLoop() {
 }
 
 void Server::handleNewConnection(int listen_id) {
-	std::cout << "DEBUG: handleNewConnection" << std::endl;
+	// std::cout << "DEBUG: handleNewConnection" << std::endl;
 	int client_fd = accept(listen_id, nullptr, nullptr);
 		if (client_fd < 0) {
 			perror("accept");
@@ -177,7 +167,7 @@ void Server::handleNewConnection(int listen_id) {
 
 void Server::handleClientData(int client_fd) {
     current_client_fd = client_fd;
-    std::cout << "DEBUG: handleClientData" << std::endl;
+    // std::cout << "DEBUG: handleClientData" << std::endl;
 
     if (!receiveData(client_fd)) {
         closeClient(client_fd);
@@ -192,11 +182,10 @@ void Server::handleClientData(int client_fd) {
 }
 
 void Server::handleClientWrite(int client_fd) {
-	std::cout << "DEBUG: handleClientWrite" << std::endl;
+	// std::cout << "DEBUG: handleClientWrite" << std::endl;
 	auto it = responses.find(client_fd);
 	if (it == responses.end()) {
 		std::cerr << "No response found for client " << client_fd << std::endl;
-		// closeClient(client_fd);
 		return ;
 	}
 	const std::string& response = it->second;
@@ -320,86 +309,38 @@ void Server::setupPorts() {
 			ss_Fds.push_back(it->sock_fd);
 			uniqPorts.push_back(it->port);
 			serverSockets[it->sock_fd] = *it; //I added the server socket to map
-			std::cout << "we pushed: "  << "sock_fd: " << it->sock_fd << ", port: " << it->port << std::endl;
+			// std::cout << "we pushed: "  << "sock_fd: " << it->sock_fd << ", port: " << it->port << std::endl;
 		}
 		++it;
 	}
-
-//======================check of setup==============================
-//======================to delelte==================================
-
-	std::cout << "=== Results of setupPorts() ===" << std::endl;
-std::cout << "somaxconn: " << SOMAXCONN << std::endl;
-// Print unique ports
-std::cout << "[Unique Ports]" << std::endl;
-for (std::vector<int>::iterator it = uniqPorts.begin(); it != uniqPorts.end(); ++it) {
-	std::cout << "Port: " << *it << std::endl;
-}
-
-// Print server socket file descriptors
-std::cout << "\n[Server Socket FDs]" << std::endl;
-for (std::vector<int>::iterator it = ss_Fds.begin(); it != ss_Fds.end(); ++it) {
-	std::cout << "Socket FD: " << *it << std::endl;
-}
-
-// Print poll file descriptors
-std::cout << "\n[Poll FDs]" << std::endl;
-for (std::vector<struct pollfd>::iterator it = poll_fds.begin(); it != poll_fds.end(); ++it) {
-	std::cout << "pollfd { fd: " << it->fd
-	          << ", events: " << it->events
-	          << ", revents: " << it->revents << " }" << std::endl;
-}
-//======================check of setup==============================
-//======================to delelte==================================
-
 }
 
 std::string Server::processCGIOutput(const std::string& output) {
-  size_t header_end = output.find("\r\n\r\n");
-  if (header_end == std::string::npos) {
-      // No headers, assume HTML content
-      Response res(config);
-      return res.buildResponse(output, 200, "text/html");
-  }
+    size_t header_end = output.find("\r\n\r\n");
+    if (header_end == std::string::npos) {
+        // No headers, assume HTML content
+        Response res(config);
+        return res.buildResponse(output, 200, "text/html");
+    }
 
-  std::string headers = output.substr(0, header_end);
-  std::string body = output.substr(header_end + 4);
-  int status_code = 200;
-  std::string content_type = "text/html";
+    std::string headers = output.substr(0, header_end);
+    std::string body = output.substr(header_end + 4);
+    int status_code = 200;
+    std::string content_type = "text/html";
 
-  std::istringstream header_stream(headers);
-  std::string line;
-  while (std::getline(header_stream, line)) {
-      if (line.empty() || line == "\r") continue;
-      if (!line.empty() && line.back() == '\r') line.pop_back();
-      if (line.find("Status:") == 0) {
-          status_code = std::stoi(line.substr(7));
-      } else if (line.find("Content-Type:") == 0) {
-          content_type = line.substr(13);
-          content_type.erase(0, content_type.find_first_not_of(" \t"));
-      }
-  }
-  
-  Response res(config);
-  return res.buildResponse(body, status_code, content_type);
+    std::istringstream header_stream(headers);
+    std::string line;
+    while (std::getline(header_stream, line)) {
+        if (line.empty() || line == "\r") continue;
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line.find("Status:") == 0) {
+            status_code = std::stoi(line.substr(7));
+        } else if (line.find("Content-Type:") == 0) {
+            content_type = line.substr(13);
+            content_type.erase(0, content_type.find_first_not_of(" \t"));
+        }
+    }
+
+    Response res(config);
+    return res.buildResponse(body, status_code, content_type);
 }
-
-//==============================================================
-//===========example of poll usage==============================
-
-// int ret = poll(fds, nfds, timeout);
-// if (ret == -1) {
-//     if (errno == EINTR) {
-//         // handle signal interruption or just retry
-//     } else {
-//         perror("poll failed");
-//         exit(EXIT_FAILURE);
-//     }
-// } else if (ret == 0) {
-//     // timeout, no events
-// } else {
-//     // check each fds[i].revents to see what happened
-// }
-
-//--------------------------------------------------------------
-//--------------------------------------------------------------

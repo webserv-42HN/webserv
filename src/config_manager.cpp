@@ -154,10 +154,7 @@ ServerConfig ConfigManager::buildServerConfig(const ServerBlock& block) {
           if (dir.name == "root" && !dir.args.empty())
               route.root = dir.args[0];
           else if (dir.name == "default_file" && !dir.args.empty())
-          {
-              std::cout << "TEST TEST TEST: " << dir.args[0] << std::endl;
               route.default_file = dir.args[0];
-          }
           else if (dir.name == "autoindex" && !dir.args.empty())
               route.autoindex = (dir.args[0] == "on");
           else if (dir.name == "methods")

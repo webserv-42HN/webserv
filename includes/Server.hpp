@@ -1,4 +1,5 @@
 #pragma once
+
 #include <string>
 #include <vector>
 #include <poll.h>
@@ -46,26 +47,25 @@ class Server {
 		std::vector<int> ss_Fds; //delete later, it's gonna be a map
 		std::map<int, ServerConfig> serverSockets;
 		std::map<int, ServerConfig> clientConfigs;
-		// std::vector<struct pollfd> poll_fds;
 		std::vector<int> uniqPorts;
 		std::map<int, ClientSession> client_sessions;
 		std::set<int> seenPorts;
 
 	public:
-    static std::vector<struct pollfd> poll_fds;
-    static std::map<int, CGIState> cgi_states; // Keyed by stdout_fd
-    static int current_client_fd; // Set in main loop before handling request
-
+		static std::vector<struct pollfd> poll_fds;
+		static std::map<int, CGIState> cgi_states; // Keyed by stdout_fd
+		static int current_client_fd; // Set in main loop before handling request
+		static bool running;
+		std::unordered_map<int, std::string> responses;
+		
 		Server(std::vector<ServerConfig> config);
-		// ~Server();
+		~Server();
 
-		void setupPorts(); //initial step when we go through the results of the parser,
+		//initial step when we go through the results of the parser,
 		//look for the unique ports and create socket for each port we gonna listen on
-
-
+		void setupPorts();
 		void run();
 		static void signalHandler(int signum);
-
 		void mainLoop();
 		void cleanup();
 
@@ -75,22 +75,16 @@ class Server {
 		void closeClient(int client_fd);
 		
 		
-    	std::string processCGIOutput(const std::string& output);
-		
-		static bool running;
-		std::unordered_map<int, std::string> responses;
-	
 		// Handling client data
 		std::string getHostFromHeaders(const std::string& headers);
 		const ServerConfig* getServerConfigByHost(const std::vector<ServerConfig>& configs,
-												const std::string& host,
-												int port);
-		int getPortFromHeaders(const std::string& headers);
+													const std::string& host, int port);
 		int getListeningPortForClient(int client_fd);
 		bool receiveData(int client_fd);
 		bool processHeaders(ClientSession& session);
 		bool isFullRequestReceived(const ClientSession& session);
 		void processRequest(int client_fd, ClientSession& session);
 		void enableWriteEvents(int client_fd);
+		std::string processCGIOutput(const std::string& output);
 };
 

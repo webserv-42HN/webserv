@@ -1,12 +1,6 @@
 #include "../includes/Response.hpp"
 #include "../includes/Server.hpp"
-#include <unistd.h>
-#include <sys/wait.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <poll.h>
-#include <iostream>
-#include <cstring>
+
 
 // Returns true if the file exists and is executable
 bool isCGIScript(const std::string& path) {
@@ -113,15 +107,7 @@ std::string Response::executeCGI(const std::string& path, const std::string& que
         env_strings.push_back("SCRIPT_NAME=" + scriptPath);
         env_strings.push_back("PATH_INFO=" + pathInfo);
         env_strings.push_back("CONTENT_TYPE=" + content_type);
-        
-        // // Get content length from headers
-        // std::string content_length = "0";
-        // for (const auto& header : headers) {
-        //     if (header.first == "Content-Length") {
-        //         content_length = header.second;
-        //         break;
-        //     }
-        // }
+    
         std::string content_length = std::to_string(body.length());
         env_strings.push_back("CONTENT_LENGTH=" + content_length);
 
@@ -203,5 +189,5 @@ std::string Response::executeCGI(const std::string& path, const std::string& que
           Server::cgi_states[pipe_out[0]] = state;
       }
     }
-  return ""; // Return empty string - CGI process is running asynchronously
+    return ""; // Return empty string - CGI process is running asynchronously
 }

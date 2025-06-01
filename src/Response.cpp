@@ -1,11 +1,7 @@
 
-
-
 #include "../includes/Response.hpp"
 #include "../includes/Router.hpp"
 #include "../includes/Request.hpp"
-#include <limits>
-#include <unistd.h> // For access() and W_OK
 
 Response::Response(std::vector<ServerConfig> config): Rconfig(config) {}
 
@@ -43,14 +39,12 @@ std::string Response::routing(std::string method, std::string url) {
         url = config.redirect_to;
 
     std::string full_path = config.root_dir + url;
-    std::cout << "DEBUG: FULL PATH: " << full_path << std::endl;
     if (is_cgi) {
       // First check if the path is a directory
       if (isDirectory(full_path)) {
           // Handle CGI directory similar to regular directories
           if (!config.default_file.empty()) {
               std::string index_path = full_path + config.default_file;
-              std::cout << "DEBUG: CGI INDEX PATH: " << index_path << std::endl;
               
               // Check if the default file exists
               std::ifstream index_file(index_path);
@@ -88,7 +82,7 @@ std::string Response::routing(std::string method, std::string url) {
         // Check if default_file is specified
         if (!config.default_file.empty()) {
             std::string index_path = full_path + config.default_file;
-            std::cout << "DEBUG: INDEX PATH: " << index_path << std::endl;
+            // std::cout << "DEBUG: INDEX PATH: " << index_path << std::endl;
             std::ifstream index_file(index_path);
             if (index_file.good()) {
                 index_file.close();
@@ -153,7 +147,7 @@ std::string Response::getPostResponse(const std::string& url) {
 
     if (content_type.empty())
         return getErrorResponse(400); // Bad Request - No Content-Type
-    
+
         // Handle URL-encoded form submission (e.g., /submit)
     if (content_type == "application/x-www-form-urlencoded" || content_type.find("text/plain") != std::string::npos) {
         if (body.empty())

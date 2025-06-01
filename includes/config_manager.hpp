@@ -1,5 +1,4 @@
-#ifndef CONFIG_MANAGER_HPP
-#define CONFIG_MANAGER_HPP
+#pragma once
 
 #include <string>
 #include <vector>
@@ -8,7 +7,6 @@
 #include <sstream>
 #include <iostream>
 #include <regex>
-// #include "../includes/Response.hpp"
 
 // Forward declarations
 class ConfigManager;
@@ -132,5 +130,3 @@ private:
     LocationBlock parseLocation();
     Directive parseDirective();
 };
-
-#endif // CONFIG_MANAGER_HPP

@@ -1,16 +1,4 @@
-// #pragma once
-
-// class Request {
-	// 	public:
-	// 		std::string method;
-// 		std::string path;
-// 		std::string version;
-
-// 		static Request parse(const std::string & raw);
-// };
-
-#ifndef REQUEST_HPP
-#define REQUEST_HPP
+#pragma once
 
 #include <iostream>
 #include <string>
@@ -47,5 +35,3 @@ class Request
 
 		
 };
-
-#endif
