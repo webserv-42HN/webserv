@@ -1,16 +1,7 @@
-// #pragma once
-// #include <string>
-// #include <sstream>
-
-// class Response {
-// 	public:
-// 		static std::string build(const std::string& body, const std::string& content_type = "text/html", int code = 200, const std::string& status = "OK");
-// };
-
-#ifndef RESPONSE_HPP
-#define RESPONSE_HPP
+#pragma once
 
 #include <iostream>
+#include <cstring>
 #include <string>
 #include <sstream>
 #include <fstream>
@@ -19,6 +10,12 @@
 #include <functional>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <poll.h>
+#include <fcntl.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <limits>
+
 #include "Request.hpp"
 #include "config_manager.hpp"
 
@@ -35,33 +32,29 @@ enum StatusCode {
     OK = 200,
     BadRequest = 400,
     NotFound = 404,
-    InternalServerError = 500
+    InternalServerError = 500,
+    FileTooLarge = 413,
+    Forbidden = 403,
+    MethodNotAllowed = 405,
+    UnsupportedMediaType = 415
 };
-
-// enum HttpMethod {
-//     GET,
-//     POST,
-//     DELETE,
-//     UNKNOWN
-// };
 
 typedef struct RouteConfig {
     std::vector<HttpMethod> allowed_methods;
     std::string root_dir;
     std::string redirect_to;
     bool autoindex;
+    std::size_t client_max_body_size;
+    std::string default_file;
 }   t_routeConfig;
 
 using RouteHandler = std::function<t_routeConfig(std::string)>;
-// typedef std::function<t_routeConfig(std::string)> RouteHandler; -> C98++
 
 class Response : public Request
 {
     protected:
-        std::string error_dir = "./www/error/";
         t_routeConfig route_config;
         std::vector<ServerConfig> Rconfig;
-        std::unordered_map<std::string, RouteHandler> routes;
 
     public:
         Response(std::vector<ServerConfig> config);
@@ -73,11 +66,12 @@ class Response : public Request
         std::string getPostResponse(const std::string &path);
         std::string getDeleteResponse(const std::string &path);
         std::string getErrorResponse(int statusCode);
+        std::string getHeadResponse(const std::string& requested_path, int statusCode);
 
         std::string buildResponse(const std::string& body, int statusCode, const std::string& contentType);
         std::string getStatusLine(int statusCode);
         HttpMethod methodToEnum(std::string method);
-        std::string generateDirectoryListing(const std::string& path);
+        std::string generateDirectoryListing(const std::string& path, const std::string& url);
         bool isDirectory(const std::string& path);
 
         bool handleFileUpload(const std::string& path,
@@ -85,9 +79,10 @@ class Response : public Request
                                         const std::string& boundary,
                                         std::string& out_filename);
         std::string getMimeType(const std::string& path);
-        // size_t getContentLength() const;
         size_t getContentLength(const std::string &headers) const;
         std::string responseApplication(std::string body);
-};
+        std::string responseTextPlain(const std::string& body);
 
-#endif
+        bool isCGIRequest(const std::string& url);
+        std::string executeCGI(const std::string& path, const std::string& query, const std::string& method);
+};

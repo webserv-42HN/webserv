@@ -2,10 +2,6 @@
 #include "../includes/Server.hpp"
 #include <iostream>
 
-// int main () {
-
-// }
-
 int main(int argc, char *argv[]) {
   if (argc != 2)
     return (0);
@@ -16,9 +12,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   // configManager.printConfigs();
-
 	Server myServer(configManager.getServerConfigs());
-
 
 	myServer.run();
 

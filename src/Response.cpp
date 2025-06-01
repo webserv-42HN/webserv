@@ -1,53 +1,102 @@
 
-
-
 #include "../includes/Response.hpp"
 #include "../includes/Router.hpp"
 #include "../includes/Request.hpp"
-#include <limits>
 
 Response::Response(std::vector<ServerConfig> config): Rconfig(config) {}
 
 Response::~Response() {}
 
+bool Response::isCGIRequest(const std::string& url) {
+  // First check if it's in the CGI directory
+  bool in_cgi_dir = url.find("/cgi/") != std::string::npos;
+  
+  // Then check if it has a script extension
+  bool has_script_ext = url.find(".cgi") != std::string::npos ||
+                        url.find(".py") != std::string::npos ||
+                        url.find(".php") != std::string::npos;
+  
+  // If in CGI directory, only treat as CGI if it has a script extension
+  if (in_cgi_dir) {
+    return has_script_ext;
+  }
+  
+  // Otherwise, just check extension
+  return has_script_ext;
+}
+
 std::string Response::routing(std::string method, std::string url) {
     Router router(Rconfig);
-    std::string response;
-    std::string full_path;
-    HttpMethod http_method = methodToEnum(method);
+    // Check if it's a CGI request before adding a trailing slash
+    bool is_cgi = isCGIRequest(url);
+
+    // Only add trailing slash for non-CGI URLs that don't already have one
+    if (!is_cgi && !url.empty() && url.back() != '/') {
+        url += '/';
+    }
     t_routeConfig config = router.getRouteConfig(url);
+    if (!config.redirect_to.empty())
+        url = config.redirect_to;
 
-    size_t i = 0;
-    while(i < Rconfig.size()) {
-        std::cout << "SERVER NAME NAME: ";
-        std::cout << Rconfig[i].server_names[i] << std::endl;
-        i++;
-    }
-
-    if (!config.redirect_to.empty()) {
-        response = "HTTP/1.1 301 Moved Permanently\r\n";
-        response += "Location: " + config.redirect_to + "\r\n\r\n";
-        return response;
-    }
-    auto it = std::find(config.allowed_methods.begin(),
-                        config.allowed_methods.end(),
-                        http_method);
-    if (it == config.allowed_methods.end())
-        return getErrorResponse(405);
-    full_path = config.root_dir + url;
+    std::string full_path = config.root_dir + url;
+    if (is_cgi) {
+      // First check if the path is a directory
+      if (isDirectory(full_path)) {
+          // Handle CGI directory similar to regular directories
+          if (!config.default_file.empty()) {
+              std::string index_path = full_path + config.default_file;
+              
+              // Check if the default file exists
+              std::ifstream index_file(index_path);
+              if (index_file.good()) {
+                  index_file.close();
+                  // Extract query string if present
+                  std::string query_string = "";
+                  size_t query_pos = url.find('?');
+                  if (query_pos != std::string::npos) {
+                      query_string = url.substr(query_pos + 1);
+                      url = url.substr(0, query_pos);
+                  }
+                  // Execute the default file as CGI
+                  return executeCGI(index_path, query_string, method);
+              }
+          }
+          
+          // If no default file or it doesn't exist, show directory listing or 404
+          if (config.autoindex) {
+              return generateDirectoryListing(full_path, url);
+          }
+          return getErrorResponse(404); // No default file and autoindex is off
+      }
+      
+      // Not a directory, process as normal CGI
+      std::string query_string = "";
+      size_t query_pos = url.find('?');
+      if (query_pos != std::string::npos) {
+          query_string = url.substr(query_pos + 1);
+          url = url.substr(0, query_pos);
+      }
+      return executeCGI(full_path, query_string, method);
+  }
     if (isDirectory(full_path) && method == "GET") {
-        std::string index_path = "./www" + url + "/index.html";
-        std::ifstream index_file(index_path);
-        if (index_file.good()) {
-            index_file.close();
-            return getGetResponse(index_path, 200);
+        // Check if default_file is specified
+        if (!config.default_file.empty()) {
+            std::string index_path = full_path + config.default_file;
+            // std::cout << "DEBUG: INDEX PATH: " << index_path << std::endl;
+            std::ifstream index_file(index_path);
+            if (index_file.good()) {
+                index_file.close();
+                return getGetResponse(index_path, 200);
+            }
         }
-        if (config.autoindex)
-            return generateDirectoryListing(full_path);
-        
-        return getErrorResponse(404);
+        if (config.autoindex) {
+            return generateDirectoryListing(full_path, url);
+        }
+        return getErrorResponse(404); // No default file and autoindex is off
     }
-    return generatingResponse(http_method, full_path);
+    if (full_path.back() == '/')
+        full_path.pop_back(); // Remove trailing slash for file access
+    return generatingResponse(methodToEnum(method), full_path);
 }
 
 std::string Response::generatingResponse(HttpMethod method, std::string full_url) {
@@ -63,6 +112,9 @@ std::string Response::generatingResponse(HttpMethod method, std::string full_url
     case DELETE:
         response = getDeleteResponse(full_url);
         break;
+    case HEAD:
+        response = getHeadResponse(full_url, 200);
+        break;
     case UNKNOWN:
         response = getErrorResponse(405);
         break;
@@ -73,10 +125,10 @@ std::string Response::generatingResponse(HttpMethod method, std::string full_url
 }
 
 std::string Response::getGetResponse(const std::string& requested_path, int statusCode) {
+    
     std::ifstream file(requested_path, std::ifstream::binary);
     if (!file.is_open())
         return getErrorResponse(404);
-
     file.seekg(0, std::ios::end);
     std::streampos size = file.tellg();
     file.seekg(0, std::ios::beg);
@@ -95,11 +147,16 @@ std::string Response::getPostResponse(const std::string& url) {
 
     if (content_type.empty())
         return getErrorResponse(400); // Bad Request - No Content-Type
-    // Handle URL-encoded form submission (e.g., /submit)
-    if (content_type == "application/x-www-form-urlencoded") {
+
+        // Handle URL-encoded form submission (e.g., /submit)
+    if (content_type == "application/x-www-form-urlencoded" || content_type.find("text/plain") != std::string::npos) {
         if (body.empty())
             return getErrorResponse(400);
-        if (url == "./www/submit") {
+        if (url == "www") {
+            resBody = responseTextPlain(body);
+            return buildResponse(resBody, 200, content_type);
+        }
+        if (url.find("submit") != std::string::npos) {
             resBody = responseApplication(body);
             return buildResponse(resBody, 200, content_type);
         } else
@@ -131,8 +188,12 @@ std::string Response::getPostResponse(const std::string& url) {
 
 std::string Response::getDeleteResponse(const std::string& filepath) {
     struct stat st;
+    std::cout << "DEBUG: Deleting file: " << filepath << std::endl;
     if (stat(filepath.c_str(), &st) != 0) {
         return getErrorResponse(404); // Not found
+    }
+    if (access(filepath.c_str(), W_OK) != 0) {
+        return getErrorResponse(403); // Forbidden
     }
     if (remove(filepath.c_str()) != 0) {
         return getErrorResponse(500); // Failed to delete
@@ -141,6 +202,26 @@ std::string Response::getDeleteResponse(const std::string& filepath) {
 }
 
 std::string Response::getErrorResponse(int statusCode) {
-    std::string error_page = error_dir + std::to_string(statusCode) + "_error.html";
+    std::string error_page = "./www/error/" + std::to_string(statusCode) + "_error.html";
     return getGetResponse(error_page, statusCode);
+}
+
+std::string Response::getHeadResponse(const std::string& requested_path, int statusCode) {
+  // Similar to GET but without body
+  std::ifstream file(requested_path, std::ifstream::binary);
+  if (!file.is_open())
+      return getErrorResponse(404);
+  
+  file.seekg(0, std::ios::end);
+  std::streampos size = file.tellg();
+  file.close();
+  
+  // Create response with headers only
+  std::stringstream res;
+  res << "HTTP/1.1 " << statusCode << " OK\r\n";
+  res << "Content-Type: " << getMimeType(requested_path) << "\r\n";
+  res << "Content-Length: " << size << "\r\n";
+  res << "\r\n";
+  
+  return res.str();
 }

@@ -76,16 +76,10 @@ void Request::parseContentType() {
     for (const std::pair<std::string, std::string>& header : headers) {
         if (header.first == "Content-Type") {
             content_type = header.second;
-            // Trim leading spaces
-            content_type.erase(content_type.begin(), std::find_if(content_type.begin(), content_type.end(), [](unsigned char ch) {
-                return !std::isspace(ch);
-            }));
-            // Trim trailing spaces
-            content_type.erase(std::find_if(content_type.rbegin(), content_type.rend(), [](unsigned char ch) {
-                return !std::isspace(ch);
-            }).base(), content_type.end());
-            break;
         }
+        if (header.first == "Content-Length")
+            content_len = std::stoi(header.second);
+        
     }
 }
 

@@ -41,31 +41,29 @@
     }
 
     .message {
-      margin-top: 30px;  /* Increased margin to make the distance bigger */
+      margin-top: 30px;
       font-size: 1.2em;
       color: #666;
     }
 
-    /* New container for forms side by side */
     .forms-container {
       display: flex;
-      gap: 20px; /* changed to 20px space between columns */
+      gap: 20px;
       width: 80%;
       max-width: 900px;
       margin: 0 auto 60px auto;
       justify-content: center;
       align-items: flex-start;
-      flex-wrap: wrap; /* stack on small screens */
+      flex-wrap: wrap;
     }
 
     #submit-form,
     .upload-section {
-      flex: 1 1 45%; /* roughly half width but flexible */
-      min-width: 300px; /* ensures good readability on small screens */
+      flex: 1 1 45%;
+      min-width: 300px;
       box-sizing: border-box;
     }
 
-    /* Style the submit form container */
     #submit-form {
       background: white;
       padding: 2rem;
@@ -74,7 +72,6 @@
       text-align: left;
     }
 
-    /* Style labels and inputs inside submit form */
     #submit-form label {
       display: block;
       margin-top: 1rem;
@@ -106,7 +103,6 @@
       background: #3a6390;
     }
 
-    /* Upload section container */
     .upload-section {
       display: flex;
       flex-direction: column;
@@ -199,27 +195,21 @@
 
 <body>
   <h1>Mini Serv is starting...</h1>
-  
-  <!-- Progress Bar -->
+
   <div class="progress-container">
     <div class="progress-bar" id="progress-bar"></div>
   </div>
   <div class="message" id="message">Loading...</div>
 
-  <!-- Forms Container: Submit form + Upload section side by side -->
   <div class="forms-container">
-    <!-- Submit Text Form -->
     <form id="submit-form">
       <label for="name">Your Name:</label>
       <input type="text" id="name" name="name" required />
-      
       <label for="age">Your Age:</label>
       <input type="text" id="age" name="age" required />
-      
       <button type="submit">Send</button>
     </form>
 
-    <!-- Upload Section -->
     <div class="upload-section">
       <div class="upload-box">
         <h2>Upload a File</h2>
@@ -243,8 +233,7 @@
   <script>
     // Submit form handler
     document.getElementById('submit-form').addEventListener('submit', async function (e) {
-      e.preventDefault(); // Prevent page reload
-
+      e.preventDefault();
       const form = e.target;
       const formData = new FormData(form);
       const data = new URLSearchParams(formData).toString();
@@ -259,26 +248,22 @@
       document.getElementById('server-response').innerHTML = html;
     });
 
-    // Create file list item with delete button
+    // Create file list item
     function createFileListItem(filename) {
       const li = document.createElement('li');
-
       const link = document.createElement('a');
       link.href = `/uploads/${filename}`;
       link.target = '_blank';
       link.textContent = filename;
-
       const delBtn = document.createElement('button');
       delBtn.textContent = 'Delete';
       delBtn.onclick = () => deleteFile(filename, li);
-
       li.appendChild(link);
       li.appendChild(delBtn);
-
       return li;
     }
 
-    // Upload form handler
+    // Upload form handler (updated to show 413 page)
     document.getElementById('upload-form').addEventListener('submit', async function (e) {
       e.preventDefault();
 
@@ -294,28 +279,25 @@
           body: formData,
         });
 
-        if (!res.ok) throw new Error('Upload failed');
+        if (!res.ok) {
+          const errorHtml = await res.text();
+          document.body.innerHTML = errorHtml; // Replace page with error HTML
+          return;
+        }
 
-        // Append uploaded file to list
         const list = document.getElementById('file-list');
         list.appendChild(createFileListItem(file.name));
-        fileInput.value = ''; // reset input
+        fileInput.value = '';
       } catch (err) {
         alert('Upload failed: ' + err.message);
       }
     });
 
-    // Delete file request
     async function deleteFile(filename, listItem) {
       if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
-
       try {
-        const res = await fetch(`/uploads/${filename}`, {
-          method: 'DELETE',
-        });
-
+        const res = await fetch(`/uploads/${filename}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Failed to delete file');
-
         listItem.remove();
         alert(`${filename} deleted.`);
       } catch (err) {
@@ -325,44 +307,40 @@
   </script>
 
   <script>
-    // Progress bar and About button logic
+    // Progress bar + About button
     let progress = 0;
     const bar = document.getElementById('progress-bar');
     const msg = document.getElementById('message');
-
     const interval = setInterval(() => {
       progress += 10;
       bar.style.width = progress + '%';
-
       if (progress >= 100) {
         clearInterval(interval);
-        // Clear message text
         msg.textContent = "";
 
-        // Create About button
         const aboutBtn = document.createElement('button');
         aboutBtn.textContent = "About Mini Serv";
         aboutBtn.className = "about-button";
-        aboutBtn.style.marginTop = "30px";
-        aboutBtn.style.marginBottom = "30px";
-        aboutBtn.style.padding = "10px 20px";
-        aboutBtn.style.fontSize = "1em";
-        aboutBtn.style.border = "none";
-        aboutBtn.style.backgroundColor = "#3498db";
-        aboutBtn.style.color = "white";
-        aboutBtn.style.borderRadius = "5px";
-        aboutBtn.style.cursor = "pointer";
-        aboutBtn.style.transition = "background-color 0.3s";
+        Object.assign(aboutBtn.style, {
+          marginTop: "30px",
+          marginBottom: "30px",
+          padding: "10px 20px",
+          fontSize: "1em",
+          border: "none",
+          backgroundColor: "#3498db",
+          color: "white",
+          borderRadius: "5px",
+          cursor: "pointer",
+          transition: "background-color 0.3s"
+        });
 
         aboutBtn.onmouseover = () => (aboutBtn.style.backgroundColor = "#2980b9");
         aboutBtn.onmouseout = () => (aboutBtn.style.backgroundColor = "#3498db");
-
         aboutBtn.onclick = () => location.href = '/about';
 
         msg.appendChild(aboutBtn);
       }
     }, 300);
   </script>
-
 </body>
 </html>

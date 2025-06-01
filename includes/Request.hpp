@@ -1,16 +1,4 @@
-// #pragma once
-
-// class Request {
-	// 	public:
-	// 		std::string method;
-// 		std::string path;
-// 		std::string version;
-
-// 		static Request parse(const std::string & raw);
-// };
-
-#ifndef REQUEST_HPP
-#define REQUEST_HPP
+#pragma once
 
 #include <iostream>
 #include <string>
@@ -32,6 +20,7 @@ class Request
 		std::vector<std::pair<std::string, std::string> > headers;
 		std::string content_type;
 		std::string body;
+		std::size_t content_len;
 	public:
 		bool isMalformedRequest(std::string &raw_req);
 		std::string encodeChunkedBody(const std::string &body);
@@ -43,6 +32,6 @@ class Request
 		void printRequest();
 		std::string urlDecode(const std::string &src);
 		s_request getRequestLine();
-};
 
-#endif
+		
+};
